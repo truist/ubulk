@@ -10,10 +10,11 @@
 
 * Formal script that can update pkgsrc
     - config file with pkgsrc dir (/usr/pkgsrc)
+        - command-arg to override default config location (/etc/ubulk.conf)
     - git-only
     - die on error
 * Log results and be ready to be run from cron
-    - config log file (/var/log/ubulk.log)
+    - config log file (/var/log/ubulk-build.log)
     - summary to stdout / details to log file
     - output path to log file
     - test running it from cron
@@ -109,10 +110,99 @@
 * Command-arg to get command-arg help
 
 ## Install Backlog
-TBD
+* Formal script that can install chosen packages
+    - reuse config file from build script
+        - command arg to override config file location
+    - die on error
+    - map chosen package names to package files (die on mismatch)
+    - install all the packages, recording result of each, but waiting until the end to exit
+    - no handling of old packages and/or rc.d stuff, yet
+* Log results and be ready to be run from cron
+    - config log file (/var/log/ubulk-install.log)
+    - summary to stdout / details to log file
+    - output path to log file
+* Delete old packages before install
+    - after checking that package files all match
+    - delete everything installed in the system
+    - on error, die with comprehensive error message
+* Option and command-arg to skip deletion (and just do install)
+    - e.g. if you had a prior delete fail, and manually finished it
+* Check if expected packages are actually installed
+    - i.e. maybe they reported "success" but aren't really there
+    - at the very end of the script (even after later stories)
+    - output any differences
+    - if differences, exit with error code
+* Stop all pkgsrc-based services
+    - before deleting all the packages
+    - Remember to use RCD_SCRIPTS_DIR for checking for rc.d scripts
+    - figure out which packages to stop, based on installed package list
+    - stop them in reverse-dependency order
+    - report failed stops
+    - config option to continue or stop after failed stop (continue)
+    - don't worry about restarting them, yet
+* Option and command-arg to ignore services
+    - e.g. if you want to manually stop and start them
+* Start old services again
+    - after successful install
+    - obey config option
+    - only start the ones that were stopped
+    - report failed starts
+    - config option to continue or stop after failed start (continue)
+    - report missing rc.d scripts
+    - config option to continue or stop after missing script (continue)
+* Show log output during startup
+    - start recording output before starting services
+    - report output after services started
+    - ignore errors
+* Option and command-arg to skip log reporting
+    - e.g. if you have other monitoring techniques
+
+## Fancy side-by-side install
+
+    # Create a "build" user with permissions to sudo root without a password.
+    # Put your pkgsrc tree in there.
+    # Take my config files: /etc/mk.conf, /etc/pkgsrc/mk.conf, ~build/pkg_comp  /default.conf, and populate your own /etc/pkgsrc/pkglist
+    # bootstrap, if needed:
+        $ VINTAGE=20130608
+        $ sudo ./bootstrap --prefix /usr/.pkg-${VINTAGE} --pkgdbdir /usr/.pkg-${VINTAGE}/.pkgdb --sysconfdir /etc/pkg --varbase /var/pkg
+    # Build your first full batch of schmonzified packages: as build, with VINTAGE set how you want, "sudo pkg_comp auto 2>&1 | tee build.log"
+    # cd binaries/packages/${VINTAGE}/All
+    # pkg_add -K /usr/.pkg-${VINTAGE}/.pkgdb pkg_install*.tgz | tee ~build/install.log
+    # /usr/.pkg-${VINTAGE}/sbin/pkg_add *.tgz | tee -a ~build/install.log
+    # XXX diff for changes I'd want to make to /etc files
+    # XXX make sure mail queue is empty (any other queues?)
+    # /etc/rc.d/{dovecot,mysqld,php_fpm,apache,qmailqread,qmailsend} stop
+    # rm /usr/pkg && ln -s /usr/.pkg-${VINTAGE} /usr/pkg
+    # /etc/rc.d/{qmailsend,qmailqread,apache,php_fpm,mysqld,dovecot} start
+    # cd .../pkgtools/pkg_rolling-replace && make install clean
+    # chmod 755 /usr/sbin/pkg_* && cd .../pkgtools/pkg_install && make install clean && sudo chmod 0 /usr/sbin/pkg_* /usr/sbin/audit-packages /usr/sbin/down  load-vulnerability-list
+    # have fun
+    # pkg_comp again later
+    # update the /usr/pkg symlink
+
+It needs this mk.conf:
+
+    # settings common to all pkgsrc builds, whether done by
+    # - pkg_comp(8) (which defines a new date-based VINTAGE)
+    # - a one-off built directly in pkgsrc
+    
+    _LOGICALBASE=           /usr/pkg                # symlink points to LOCALBASE
+    _LOCALPATH=             /usr/.pkg-              # LOCALBASE is here somewhere
+    
+    .if !defined(VINTAGE)
+    VINTAGE!=               ( readlink -f ${_LOGICALBASE} \
+                                | sed -e 's|^${_LOCALPATH}||' )
+    .endif
+    
+    _PHYSICALBASE=          ${_LOCALPATH}${VINTAGE}
+    LOCALBASE=              ${_PHYSICALBASE}
+    
+    PKG_DBDIR=              ${LOCALBASE}/.pkgdb
+
+
+(which should be supplied as a referencable snippet)
 
 ## Later Backlog
 * Figure out ccache
 * Figure out devel/cpuflags
 * rsync pbulk reports to somewhere web-accessible; include that in the output / email
-* Remember to use RCD_SCRIPTS_DIR for checking for rc.d scripts
