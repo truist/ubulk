@@ -159,6 +159,74 @@
 
 ## Fancy side-by-side install
 
+* Directories at issue:
+    - /usr/pkg
+    - /etc/rc.d (if configured for install) or /usr/pkg/etc/rc.d
+    - /var/<whatever>
+
+    - /usr/pkg becomes a symlink to e.g. /usr/.pkg-VINTAGE
+    - scripts in /etc/rc.d become script-managed symlinks to /usr/pkg/etc/rc.d
+        - ...which is itself actually a symlink (via /usr/pkg) to a VINTAGE rc.d
+    - /var stuff just stays where it is, and the user is warned about it
+        - ...because it's probably stuff that's supposed to last across upgrades
+            - (but might sometimes need to be manually upgraded)
+
+* The "install" step will happen as part of the build step
+    - and it will do a diff:
+        - high-level summary under /usr/pkg
+        - specifics under /etc/rc.d
+    - and it will warn about external dirs that will exist (e.g. /var/qmail)
+* All of that will be included in the output email
+
+* Then the "ok, I'm ready to switch" script will:
+    - stop services
+    - swap the /usr/pkg symlink (thereby also swapping any existing /etc/rc.d symlinks)
+    - create any newly-needed /etc/rc.d symlinks
+    - delete (and warn) for any lost /etc/rc.d/symlinks
+    - start the services (but not the new ones - but warn about those)
+    - if successful, delete all /usr/.pkg-VINTAGE dirs that aren't the current and the prior ones
+    - maybe have a "show what will be done" mode?
+
+* Then there will be a "oh shit it broke switch it back" script that will:
+    - stop services
+    - swap the /usr/pkg symlink back
+    - create and delete (as needed) any /etc/rc.d symlinks
+    - start the services (including "new" ones)
+    - tell the user exactly what was done
+    - maybe have a "show what will be done" mode?
+
+----
+
+* Manually bootstrap a VINTAGE pkg dir
+    - mk.conf changes
+    - initial directory
+    - MAYBE HAVE A SPECIAL VARBASE, TOO?!?
+        - THIS IS A TERRIBLE IDEA - SOME STUFF IN /VAR IS DESIGNED TO PERSIST ACROSS UPGRADES
+* Automatically install into VINTAGE pkg dir, instead of standard dir
+    - config option and command-arg to create a new vintage (off)
+    - a new VINTAGE each time
+        - check and abort if it already exists
+    - don't stop services before installing
+    - first build pkg_add into the vintage
+    - then use it to install all the other packages
+    - don't change the symlink, automatically (WARN LOUDLY)
+* Warn user about packages (and dirs) that aren't in /usr/package
+    - after install (even if not fully successful)
+    - e.g. /var/qmail, /var/log/httpd, /var/db/httpd
+    - a way to silence the warning (per-package?)
+    - make sure to check dependent packages (slow?)
+* Help user bootstrap VINTAGE pkg dir
+    - config option to use vintage paths (no)
+        - on each run, suggest to user that they switch it to yes, and where to find more info
+    - lots of help text explaining what it is and how to set it up
+    - mk snippet that can be included in mk.conf
+        - can it safely be symlinked from /usr/pkg/wherever, if /usr/pkg is a vintage symlink?
+    - special script that will configure the vintage dir and mk.conf
+        - use the general config file to find the appropriate dirs
+        - make sure nothing else defines LOCALBASE
+        - must pass first vintage and snippet path as command-line args
+        - don't run if VINTAGE is defined in env or mk.conf
+
     # Create a "build" user with permissions to sudo root without a password.
     # Put your pkgsrc tree in there.
     # Take my config files: /etc/mk.conf, /etc/pkgsrc/mk.conf, ~build/pkg_comp  /default.conf, and populate your own /etc/pkgsrc/pkglist
@@ -206,3 +274,6 @@ It needs this mk.conf:
 * Figure out ccache
 * Figure out devel/cpuflags
 * rsync pbulk reports to somewhere web-accessible; include that in the output / email
+* Turn this whole thing into a pkgsrc package :)
+    - version number
+    - releases
