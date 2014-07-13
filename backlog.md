@@ -162,8 +162,8 @@
 * Directories at issue:
     - /usr/pkg
     - /etc/rc.d (if configured for install) or /usr/pkg/etc/rc.d
-    - /var/<whatever>
-
+    - /var/*
+* How they'll be handled:
     - /usr/pkg becomes a symlink to e.g. /usr/.pkg-VINTAGE
     - scripts in /etc/rc.d become script-managed symlinks to /usr/pkg/etc/rc.d
         - ...which is itself actually a symlink (via /usr/pkg) to a VINTAGE rc.d
@@ -227,26 +227,28 @@
         - must pass first vintage and snippet path as command-line args
         - don't run if VINTAGE is defined in env or mk.conf
 
-    # Create a "build" user with permissions to sudo root without a password.
-    # Put your pkgsrc tree in there.
-    # Take my config files: /etc/mk.conf, /etc/pkgsrc/mk.conf, ~build/pkg_comp  /default.conf, and populate your own /etc/pkgsrc/pkglist
-    # bootstrap, if needed:
+Amitai's script:
+
+    Create a "build" user with permissions to sudo root without a password.
+    Put your pkgsrc tree in there.
+    Take my config files: /etc/mk.conf, /etc/pkgsrc/mk.conf, ~build/pkg_comp  /default.conf, and populate your own /etc/pkgsrc/pkglist
+    bootstrap, if needed:
         $ VINTAGE=20130608
         $ sudo ./bootstrap --prefix /usr/.pkg-${VINTAGE} --pkgdbdir /usr/.pkg-${VINTAGE}/.pkgdb --sysconfdir /etc/pkg --varbase /var/pkg
-    # Build your first full batch of schmonzified packages: as build, with VINTAGE set how you want, "sudo pkg_comp auto 2>&1 | tee build.log"
-    # cd binaries/packages/${VINTAGE}/All
-    # pkg_add -K /usr/.pkg-${VINTAGE}/.pkgdb pkg_install*.tgz | tee ~build/install.log
-    # /usr/.pkg-${VINTAGE}/sbin/pkg_add *.tgz | tee -a ~build/install.log
-    # XXX diff for changes I'd want to make to /etc files
-    # XXX make sure mail queue is empty (any other queues?)
-    # /etc/rc.d/{dovecot,mysqld,php_fpm,apache,qmailqread,qmailsend} stop
-    # rm /usr/pkg && ln -s /usr/.pkg-${VINTAGE} /usr/pkg
-    # /etc/rc.d/{qmailsend,qmailqread,apache,php_fpm,mysqld,dovecot} start
-    # cd .../pkgtools/pkg_rolling-replace && make install clean
-    # chmod 755 /usr/sbin/pkg_* && cd .../pkgtools/pkg_install && make install clean && sudo chmod 0 /usr/sbin/pkg_* /usr/sbin/audit-packages /usr/sbin/down  load-vulnerability-list
-    # have fun
-    # pkg_comp again later
-    # update the /usr/pkg symlink
+    Build your first full batch of schmonzified packages: as build, with VINTAGE set how you want, "sudo pkg_comp auto 2>&1 | tee build.log"
+    cd binaries/packages/${VINTAGE}/All
+    pkg_add -K /usr/.pkg-${VINTAGE}/.pkgdb pkg_install*.tgz | tee ~build/install.log
+    /usr/.pkg-${VINTAGE}/sbin/pkg_add *.tgz | tee -a ~build/install.log
+    XXX diff for changes I'd want to make to /etc files
+    XXX make sure mail queue is empty (any other queues?)
+    /etc/rc.d/{dovecot,mysqld,php_fpm,apache,qmailqread,qmailsend} stop
+    rm /usr/pkg && ln -s /usr/.pkg-${VINTAGE} /usr/pkg
+    /etc/rc.d/{qmailsend,qmailqread,apache,php_fpm,mysqld,dovecot} start
+    cd .../pkgtools/pkg_rolling-replace && make install clean
+    chmod 755 /usr/sbin/pkg_* && cd .../pkgtools/pkg_install && make install clean && sudo chmod 0 /usr/sbin/pkg_* /usr/sbin/audit-packages /usr/sbin/down  load-vulnerability-list
+    have fun
+    pkg_comp again later
+    update the /usr/pkg symlink
 
 It needs this mk.conf:
 
