@@ -5,14 +5,14 @@
 * Do a manual bulk build with pbulk
 * Do a scripted install of all desired packages
 * Make a backlog
-
-## Build Backlog
-
 * Formal script that can update pkgsrc
     - config file with pkgsrc dir (/usr/pkgsrc)
         - command-arg to override default config location (/etc/ubulk.conf)
     - git-only
     - die on error
+
+## Build Backlog
+
 * Log results and be ready to be run from cron
     - config log file (/var/log/ubulk-build.log)
     - summary to stdout / details to log file
