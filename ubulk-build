@@ -5,8 +5,8 @@
 set -e
 
 usage() {
-	echo 1>&2 "usage: ${0##*/} [-C /path/to/ubulk.conf] [-v]"
-	echo 1>&2 "       -v       Turn on verbose mode"
+	echo >&2 "usage: ${0##*/} [-C /path/to/ubulk.conf] [-v]"
+	echo >&2 "       -v       Turn on verbose mode"
 	exit 1
 }
 
@@ -50,7 +50,7 @@ find_script_real_dir() {
 ### END UTILITY FUNCTIONS ###
 
 
-### SETTINGS AND SUCH ###
+### SETTINGS AND SETUP ###
 SCRIPT_DIR=$(find_script_real_dir)
 LIB_DIR="$SCRIPT_DIR/lib"
 
@@ -64,20 +64,22 @@ fi
 if [ -f "$CONFIG" ]; then
 	. "$CONFIG"
 elif [ -n "$CONFIG_SET" ]; then
-	echo 1>&2 "ERROR: Specified config file '$CONFIG' not found"
+	echo >&2 "ERROR: Specified config file '$CONFIG' not found"
 	exit 1
 fi
 
 # load the utility functions
-. "$LIB_DIR/util.sh"
-### END SETTINGS AND SUCH ###
+LOGPATH=${BUILDLOG:?} . "$LIB_DIR/util.sh"
+# from here forward we have to use 'console' and 'die' to get output
+# to the console
+### END SETTINGS AND SETUP ###
 
 
 # start doing actual work
-echo "Updating pkgsrc ($PKGSRC)..."
+console "Updating pkgsrc ($PKGSRC)"
 cd "$PKGSRC" && git pull || die $?
 
 
-echo
-echo "Done!"
+console
+console "Done!"
 

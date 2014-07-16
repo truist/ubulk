@@ -10,14 +10,13 @@
         - command-arg to override default config location (/etc/ubulk.conf)
     - git-only
     - die on error
-
-## Build Backlog
-
 * Log results and be ready to be run from cron
     - config log file (/var/log/ubulk-build.log)
     - summary to stdout / details to log file
     - output path to log file
-    - test running it from cron
+
+## Build Backlog
+
 * Option to use pkg_chk to see what's new (in log output)
     - config setting (yes)
     - command-line arg to override config setting
