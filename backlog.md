@@ -168,3 +168,5 @@
 * Turn this whole thing into a pkgsrc package :)
     - version number
     - releases
+* Also see http://mail-index.netbsd.org/pkgsrc-users/2013/11/09/msg018881.html (and responses)
+

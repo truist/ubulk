@@ -4,58 +4,73 @@
 # (we should be manually handling all possible errors, so this is "just in case")
 set -e
 
-# utility function; can't be in util.sh because we need it to find util.sh
+### UTILITY FUNCTIONS ###
+# these can't be in util.sh because we need them to find util.sh
 check_for_relative_path() {
 	echo "$1" | grep -q "^[^/]" >/dev/null 2>&1
 	echo $?
 }
 
-# find the script's actual directory
-if [ -n "$BASH_SOURCE" ]; then
-	SOURCE="${BASH_SOURCE}"
-else
-	SOURCE="$0"
-fi
-while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-	DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-	SOURCE="$(readlink "$SOURCE")"
-	if [ `check_for_relative_path $SOURCE` -eq 0 ]; then
-		SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+find_script_real_dir() {
+	set -e
+	if [ -n "$BASH_SOURCE" ]; then
+		SOURCE="${BASH_SOURCE}"
+	else
+		SOURCE="$0"
 	fi
-done
-SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+	while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+		DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+		SOURCE="$(readlink "$SOURCE")"
+		if [ $(check_for_relative_path $SOURCE) -eq 0 ]; then
+			# if $SOURCE was a relative symlink, we need to resolve it relative to the
+			# path where the symlink file was located
+			SOURCE="$DIR/$SOURCE"
+		fi
+	done
+	echo "$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+}
+### END UTILITY FUNCTIONS ###
 
+
+
+SCRIPT_DIR=$(find_script_real_dir)
 LIB_DIR="$SCRIPT_DIR/lib"
 
 # load the hard-coded default settings
 . "$LIB_DIR/defaults.conf"
 
-# process the arguments
+# process the arguments (after the defaults were loaded, so we can override them)
 usage() {
-	echo "usage: ubulk-build [--config=file] [--verbose]"
+	echo 1>&2 "usage: ${0##*/} [-C /path/to/ubulk.conf] [-v]"
+	echo 1>&2 "       -v       Turn on verbose mode"
 	exit 1
 }
-while [ $# -gt 0 ]; do
-	case "$1" in
-		--config=*)     CONFIG=`echo $1 | sed -e 's|^--config=||'` ;;
-		--verbose)      set -x ;;
-		-*)             usage ;;
-		*)              usage ;;
-	esac
-	shift
+while getopts C:v opt; do
+    case $opt in
+	C)  CONFIG="${OPTARG}"; CONFIG_SET=yes ;;
+	v)  set -x ;;
+	\?) usage ;;
+    esac
 done
+shift $(expr $OPTIND - 1)
+if [ $# != 0 ]; then usage; fi
+
 
 # load the config file
-if [ `check_for_relative_path $CONFIG` -eq 0 ]; then
-	CONFIG="`pwd`/$CONFIG"
+if [ $(check_for_relative_path $CONFIG) -eq 0 ]; then
+	CONFIG="$(pwd)/$CONFIG"
 fi
 if [ -f "$CONFIG" ]; then
 	. "$CONFIG"
+elif [ -n "$CONFIG_SET" ]; then
+	echo 1>&2 "ERROR: Specified config file '$CONFIG' not found"
+	exit 1
 fi
 
 # load the utility functions
 . "$LIB_DIR/util.sh"
 
+# start doing actual work
 echo "Updating pkgsrc ($PKGSRC)..."
 cd "$PKGSRC" && git pull || die $?
 
