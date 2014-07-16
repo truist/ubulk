@@ -4,6 +4,24 @@
 # (we should be manually handling all possible errors, so this is "just in case")
 set -e
 
+usage() {
+	echo 1>&2 "usage: ${0##*/} [-C /path/to/ubulk.conf] [-v]"
+	echo 1>&2 "       -v       Turn on verbose mode"
+	exit 1
+}
+
+# process the arguments
+while getopts C:v opt; do
+    case $opt in
+		C)  CONFIG="${OPTARG}"; CONFIG_SET=yes ;;
+		v)  set -x ;;
+		\?) usage ;;
+    esac
+done
+shift $(expr $OPTIND - 1)
+if [ $# != 0 ]; then usage; fi
+
+
 ### UTILITY FUNCTIONS ###
 # these can't be in util.sh because we need them to find util.sh
 check_for_relative_path() {
@@ -32,29 +50,12 @@ find_script_real_dir() {
 ### END UTILITY FUNCTIONS ###
 
 
-
+### SETTINGS AND SUCH ###
 SCRIPT_DIR=$(find_script_real_dir)
 LIB_DIR="$SCRIPT_DIR/lib"
 
-# load the hard-coded default settings
+# load the defaults
 . "$LIB_DIR/defaults.conf"
-
-# process the arguments (after the defaults were loaded, so we can override them)
-usage() {
-	echo 1>&2 "usage: ${0##*/} [-C /path/to/ubulk.conf] [-v]"
-	echo 1>&2 "       -v       Turn on verbose mode"
-	exit 1
-}
-while getopts C:v opt; do
-    case $opt in
-	C)  CONFIG="${OPTARG}"; CONFIG_SET=yes ;;
-	v)  set -x ;;
-	\?) usage ;;
-    esac
-done
-shift $(expr $OPTIND - 1)
-if [ $# != 0 ]; then usage; fi
-
 
 # load the config file
 if [ $(check_for_relative_path $CONFIG) -eq 0 ]; then
@@ -69,9 +70,14 @@ fi
 
 # load the utility functions
 . "$LIB_DIR/util.sh"
+### END SETTINGS AND SUCH ###
+
 
 # start doing actual work
 echo "Updating pkgsrc ($PKGSRC)..."
 cd "$PKGSRC" && git pull || die $?
 
+
+echo
 echo "Done!"
+
