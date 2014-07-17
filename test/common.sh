@@ -1,0 +1,2 @@
+SCRIPTNAME=ubulk-build
+

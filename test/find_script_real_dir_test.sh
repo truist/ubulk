@@ -1,10 +1,11 @@
 #!/bin/sh
 
-SCRIPTNAME=ubulk-build
+. ./common.sh
+
 FOUNDIT="foundit!"
 
 setUp() {
-	set -e
+	local - && set -e
 
 	cp ../$SCRIPTNAME $SHUNIT_TMPDIR/
 	mkdir $SHUNIT_TMPDIR/lib
@@ -20,7 +21,7 @@ EOF
 }
 
 tearDown() {
-	set -e
+	local - && set -e
 
 	cd $INITDIR
 	rm -rf $SHUNIT_TMPDIR/*
