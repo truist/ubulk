@@ -5,15 +5,23 @@
 set -e
 
 usage() {
-	echo >&2 "usage: ${0##*/} [-C /path/to/ubulk.conf] [-v]"
-	echo >&2 "       -v       Turn on verbose mode"
+	echo >&2 "usage: ${0##*/} [-C /path/to/ubulk.conf]"
+	echo >&2 "                   [-c (yes|no)] [-p (yes|no)]"
+	echo >&2 "                   [-hv]"
+	echo >&2 "       -c (yes|no) Whether to run pkg_chk before building"
+	echo >&2 "       -h          This help"
+	echo >&2 "       -p (yes|no) Whether to update pkgsrc before building"
+	echo >&2 "       -v          Turn on verbose mode"
 	exit 1
 }
 
 # process the arguments
-while getopts C:v opt; do
+while getopts C:c:hp:v opt; do
     case $opt in
 		C)  CONFIG="${OPTARG}"; CONFIG_SET=yes ;;
+		c)  DOPKGCHK="${OPTARG}" ;;
+		h)  usage ;;
+		p)  UPDATEPKGSRC="${OPTARG}" ;;
 		v)  set -x ;;
 		\?) usage ;;
     esac
@@ -75,9 +83,35 @@ LOGPATH=${BUILDLOG:?} . "$LIB_DIR/util.sh"
 ### END SETTINGS AND SETUP ###
 
 
-# start doing actual work
-console "Updating pkgsrc ($PKGSRC)"
-cd "$PKGSRC" && git pull || die $?
+### START DOING ACTUAL WORK ###
+
+# update pkgsrc
+echo $UPDATEPKGSRC
+if [ "yes" = "$UPDATEPKGSRC" ]; then
+	console "Updating pkgsrc ($PKGSRC)"
+	cd "$PKGSRC" && git pull || die $?
+else
+	console "Skipping pkgsrc update"
+fi
+
+# run pkg_chk
+echo $DOPKGCHK
+if [ "yes" = "$DOPKGCHK" ]; then
+	console "Checking for missing, out-of-date, or extra packages"
+	if command -V pkg_chk >/dev/null 2>&1 ; then
+		CHKRESULTS=$(pkg_chk -a -u -r -q -B -C /etc/pkglist) || die $?
+		if [ "" = "$CHKRESULTS" ]; then
+			console_err "pkg_chk says everything is in sync, exiting"
+			exit 0
+		else
+			console "$(echo "$CHKRESULTS" | sed 's/^/  /')" || die $?
+		fi
+	else
+		console "Can't find pkg_chk; skipping"
+	fi
+else
+	console "Skipping pkg_chk"
+fi
 
 
 console

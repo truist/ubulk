@@ -15,9 +15,13 @@ fi
 LASTCONSOLE=""
 LASTPOS=0
 console() {
-	echo $@ | tee $CONSOLEOUT
+	echo "$@" | tee $CONSOLEOUT
 	LASTCONSOLE="$@"
 	LASTPOS=$(($(ls -nl "$LOGPATH" | awk '{print $5}') + 1))
+}
+
+console_err() {
+	echo "$@" | tee $CONSOLEERR
 }
 
 : ${LOGLINESLIMIT:=10}
@@ -49,13 +53,15 @@ die() {
 		RECENTLOGS=$(recent_logs)
 	fi
 
-	echo "Error $exitcode while \"$LASTCONSOLE\"" | tee $CONSOLEERR
+	console_err "Error $exitcode while \"$LASTCONSOLE\""
 
 	if [ 0 -lt $LOGLINESLIMIT ]; then
+		# only write to console (err), not to log
 		echo "$RECENTLOGS" | sed 's/^/ > /' >$CONSOLEERR
 	fi
 
-	echo | tee $CONSOLEERR
+	# only write to console (err), not to log
+	echo > $CONSOLEERR
 	echo "See $LOGPATH for details" >$CONSOLEERR
 
 	exit ${exitcode}
