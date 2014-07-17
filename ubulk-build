@@ -76,7 +76,7 @@ elif [ -n "$CONFIG_SET" ]; then
 	exit 1
 fi
 
-# load the utility functions
+# load the utility functions (after we know where the log should go)
 LOGPATH=${BUILDLOG:?} . "$LIB_DIR/util.sh"
 # from here forward we have to use 'console' and 'die' to get output
 # to the console
