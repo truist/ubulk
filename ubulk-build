@@ -16,13 +16,18 @@ usage() {
 	exit ${1:-1}
 }
 
-# process the arguments
+# a trick to delay setting variables based on the command-line args, so they
+# can trump the defaults and the config file, later
+stashArg() {
+	ARG_STASH="$ARG_STASH $1=\"${OPTARG}\" ;"
+}
+
 while getopts C:c:hp:v opt; do
     case $opt in
-		C)  CONFIG="${OPTARG}"; CONFIG_SET=yes ;;
-		c)  DOPKGCHK="${OPTARG}" ;;
+		C)  ARG_CONFIG="${OPTARG}" ;; # this one needs special handling
+		c)  stashArg "DOPKGCHK" ;;
 		h)  usage 0 ;;
-		p)  UPDATEPKGSRC="${OPTARG}" ;;
+		p)  stashArg "UPDATEPKGSRC" ;;
 		v)  set -x ;;
 		\?) usage ;;
     esac
@@ -30,7 +35,9 @@ done
 shift $(expr $OPTIND - 1)
 if [ $# != 0 ]; then usage; fi
 
+#-------------------------------------------------------------------------
 ### UTILITY FUNCTIONS ###
+
 # these can't be in util.sh because we need them to find util.sh
 check_for_relative_path() {
 	echo "$1" | grep -q "^[^/]" >/dev/null 2>&1
@@ -55,10 +62,25 @@ find_script_real_dir() {
 	done
 	echo "$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 }
-### END UTILITY FUNCTIONS ###
 
 
+#-------------------------------------------------------------------------
 ### SETTINGS AND SETUP ###
+
+# process a command-line-specified CONFIG
+if [ -n "$ARG_CONFIG" ]; then
+	if [ $(check_for_relative_path $ARG_CONFIG) -eq 0 ]; then
+		ARG_CONFIG="$(pwd)/$ARG_CONFIG"
+	fi
+	if [ ! -f "$ARG_CONFIG" ]; then
+		echo >&2 "ERROR: Specified config file '$ARG_CONFIG' not found"
+		exit 1
+	fi
+	CONFIG="$ARG_CONFIG"
+else
+	CONFIG=/etc/ubulk.conf
+fi
+
 SCRIPT_DIR=$(find_script_real_dir)
 LIB_DIR="$SCRIPT_DIR/lib"
 
@@ -66,23 +88,20 @@ LIB_DIR="$SCRIPT_DIR/lib"
 . "$LIB_DIR/defaults.conf"
 
 # load the config file
-if [ $(check_for_relative_path $CONFIG) -eq 0 ]; then
-	CONFIG="$(pwd)/$CONFIG"
-fi
 if [ -f "$CONFIG" ]; then
 	. "$CONFIG"
-elif [ -n "$CONFIG_SET" ]; then
-	echo >&2 "ERROR: Specified config file '$CONFIG' not found"
-	exit 1
 fi
 
-# load the utility functions (after we know where the log should go)
+# override with the command-line args
+eval "$ARG_STASH"
+
+# load the utility functions (now that we know where the log should go)
 LOGPATH=${BUILDLOG:?} . "$LIB_DIR/util.sh"
 # from here forward we have to use 'console' and 'die' to get output
 # to the console
-### END SETTINGS AND SETUP ###
 
 
+#-------------------------------------------------------------------------
 ### START DOING ACTUAL WORK ###
 
 # update pkgsrc

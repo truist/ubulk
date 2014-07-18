@@ -32,18 +32,38 @@ testDashV() {
 testConfig() {
 	checkDefaultsFile "CONFIG" "/etc/ubulk.conf" "/etc/fake"
 
+	mv $DEFAULTSCONF ${DEFAULTSCONF}.save
 	echo 'CONFIG=./fake.conf' > $DEFAULTSCONF
 	echo 'exit 23' > ./fake.conf
 	runScript
 	checkResults 23 "script is obeying the default CONFIG path, by default" \
 		"" "stdout has no output" \
 		"" "stderr has no output"
+	mv ${DEFAULTSCONF}.save $DEFAULTSCONF
 
 	echo 'exit 24' > ./fake2.conf
 	runScript -C ./fake2.conf
 	checkResults 24 "script obeys command-arg over hard-coded default" \
 		"" "stdout has no output" \
 		"" "stderr has no output"
+
+	runScript -C fake2.conf
+	checkResults 24 "script fixes up a local-dir ref, so it works" \
+		"" "stdout has no output" \
+		"" "stderr has no output"
+
+
+	runScript -C ./doesnotexist.conf
+	checkResults 1 "a missing command-line config file means an error" \
+		"" "empty stdout" \
+		"doesnotexist" "stderr complains about the missing file"
+
+	echo 'CONFIG=./doesnotexist.conf' >> $DEFAULTSCONF
+	echo 'exit 23' > $UTILSH  #prevent the script from continuing after reading defaults
+	runScript
+	checkResults 23 "script exited like we expected" \
+		"" "empty stdout" \
+		"" "script didn't complain about missing config file"
 }
 
 testDoPkgChk() {
@@ -68,6 +88,7 @@ testDoPkgChk() {
 		"^Skipping pkg_chk" "command-arg trumps hard-coded default" \
 		"" "nothing on stderr"
 
+	echo "DOPKGCHK=yes" > ./testubulk.conf
 	runScript -C ./testubulk.conf -p no -c no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkg_chk" "command-arg trumps config file" \
@@ -96,6 +117,7 @@ testUpdatePkgsrc() {
 		"^Skipping pkgsrc update" "command-arg trumps hard-coded default" \
 		"" "nothing on stderr"
 
+	echo "UPDATEPKGSRC=yes" > ./testubulk.conf
 	runScript -C ./testubulk.conf -c no -p no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "command-arg trumps config file" \
