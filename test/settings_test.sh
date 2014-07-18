@@ -126,10 +126,24 @@ testUpdatePkgsrc() {
 }
 
 testPkgsrc() {
+	checkDefaultsFile "PKGSRC" "/usr/pkgsrc" "/usr/packagesource"
+
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF &&  echo "PKGSRC=/tmp/myfaketestdir" >> $DEFAULTSCONF
+	runScript
+	checkResults 2 "script dies as expected" \
+		"^Updating pkgsrc (/tmp/myfaketestdir)" "script obeyed the hard-coded default" \
+		"can't cd to" "stderr complains about fake dir"
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+
+	echo "PKGSRC=/tmp/myotherfaketestdir" > ./testubulk.conf
+	runScript -C ./testubulk.conf
+	checkResults 2 "script dies as expected" \
+		"^Updating pkgsrc (/tmp/myotherfaketestdir)" "script obeyed the config-file value" \
+		"can't cd to" "stderr complains about fake dir"
 }
 
 
-# PKGSRC (default, setting)
 # BUILDLOG (default, setting)
 
 	# default looks for correct value
