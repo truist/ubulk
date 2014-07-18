@@ -1,9 +1,8 @@
 #!/bin/sh
 
-# -C (default, arg)
-# -c (default, setting, arg)
 # -p (default, setting, arg)
-# -v (how?)
+# PKGSRC (default, setting)
+# BUILDLOG (default, setting)
 
 . ./common.sh
 
@@ -70,7 +69,7 @@ testConfig() {
 		. $DEFAULTSCONF
 		echo $CONFIG
 	)
-	assertEquals "$DEFAULTSCONF doesn't override already-set value" "/etc/fake" "$VALUE"
+	assertEquals "DEFAULTSCONF doesn't override already-set value" "/etc/fake" "$VALUE"
 
 	echo 'CONFIG=./fake.conf' > $DEFAULTSCONF
 	echo 'exit 23' > ./fake.conf
@@ -86,15 +85,62 @@ testConfig() {
 		"" "stderr has no output"
 }
 
-	# default looks for /etc/ubulk.conf
+testDoPkgChk() {
+	unset DOPKGCHK
+	VALUE=$(
+		. $DEFAULTSCONF
+		echo $DOPKGCHK
+	)
+	assertEquals "DOPKGCHK has expected hard-coded value" "yes" "$VALUE"
+
+	VALUE=$(
+		DOPKGCHK=no
+		. $DEFAULTSCONF
+		echo $DOPKGCHK
+	)
+	assertEquals "DOPKGCHK doesn't override already-set value" "no" "$VALUE"
+
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF &&  echo "UPDATEPKGSRC=no" >> $DEFAULTSCONF
+	echo >> $DEFAULTSCONF && echo "DOPKGCHK=no" >> $DEFAULTSCONF
+	runScript
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pkg_chk" "script obeyed the hard-coded default" \
+		"" "nothing on stderr"
+
+	# use the default defaults file ('yes') (and the default config file)
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+	# but turn off pkgsrc again
+	echo >> $DEFAULTSCONF &&  echo "UPDATEPKGSRC=no" >> $DEFAULTSCONF
+	# and turn off DOPKGCHK again in the config file
+	echo "DOPKGCHK=no" > ./testubulk.conf
+	runScript -C ./testubulk.conf
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pkg_chk" "setting trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	# this time skip the config file but trump the default from the command line
+	runScript -c no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pkg_chk" "command-arg trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	# now trump the config file from the command line
+	runScript -C ./testubulk.conf -c no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pkg_chk" "command-arg trumps config file" \
+		"" "nothing on stderr"
+}
+
+	# default looks for correct value
 		# source defaults.conf ourselves
 		# check for correct value
 		# check that value doesn't overwrite already-set value
 		# write fake defaults.conf
-		# check that script loads the path specified in the fake defaults.conf
-	# (setting overrides default - N/A in this case)
+		# check that script obeys the fake defaults.conf
+	# setting overrides default
 	# command-arg overrides default
-	# (command-arg overrides setting - N/A in this case)
+	# command-arg overrides setting
 #-------------------------------------------------------------------------
 
 runScript() {
@@ -112,23 +158,23 @@ checkResults() {
 	ERR_MSG="$6"
 
 	if [ $E_EXIT -eq 0 ]; then
-		assertTrue "$EXIT_MSG" $RTRN
+		assertTrue "$EXIT_MSG" $RTRN || echo "($RTRN)"
 	else
-		assertFalse "$EXIT_MSG" $RTRN
+		assertFalse "$EXIT_MSG" $RTRN || echo "($RTRN)"
 	fi
 
 	if [ "" = "$E_OUT" ]; then
-		assertNull "$OUT_MSG" "$(cat $OUT)"
+		assertNull "$OUT_MSG" "$(cat $OUT)" || cat $OUT
 	else
 		echo "$(cat $OUT)" | grep "$E_OUT" >/dev/null 2>&1
-		assertTrue "$OUT_MSG" $?
+		assertTrue "$OUT_MSG" $? || cat $OUT
 	fi
 
 	if [ "" = "$E_ERR" ]; then
-		assertNull "$ERR_MSG" "$(cat $ERR)"
+		assertNull "$ERR_MSG" "$(cat $ERR)" || cat $ERR
 	else
 		echo "$(cat $ERR)" | grep "$E_ERR" >/dev/null 2>&1
-		assertTrue "$ERR_MSG" $?
+		assertTrue "$ERR_MSG" $? || cat $ERR
 	fi
 }
 

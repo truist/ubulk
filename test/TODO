@@ -1,3 +1,5 @@
 output tests
 	util.sh
 	error handling
+test each actual step
+

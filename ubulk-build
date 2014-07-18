@@ -30,7 +30,6 @@ done
 shift $(expr $OPTIND - 1)
 if [ $# != 0 ]; then usage; fi
 
-
 ### UTILITY FUNCTIONS ###
 # these can't be in util.sh because we need them to find util.sh
 check_for_relative_path() {
@@ -96,7 +95,6 @@ else
 fi
 
 # run pkg_chk
-echo $DOPKGCHK
 if [ "yes" = "$DOPKGCHK" ]; then
 	console "Checking for missing, out-of-date, or extra packages"
 	if command -V pkg_chk >/dev/null 2>&1 ; then
