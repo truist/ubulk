@@ -4,27 +4,13 @@
 
 FOUNDIT="foundit!"
 
-setUp() {
-	local - && set -e
+localSetUp() {
 
-	cp ../$SCRIPTNAME $SHUNIT_TMPDIR/
-	mkdir $SHUNIT_TMPDIR/lib
-
-	# mock defaults.conf,  which (we believe) is the first thing loaded
+	# mock defaults.conf,  which (for now) is the first thing loaded
 	cat <<- EOF > $SHUNIT_TMPDIR/lib/defaults.conf
 		echo "$FOUNDIT"
 		exit 0
 EOF
-
-	INITDIR=`pwd`
-	cd $SHUNIT_TMPDIR
-}
-
-tearDown() {
-	local - && set -e
-
-	cd $INITDIR
-	rm -rf $SHUNIT_TMPDIR/*
 }
 
 #-----------------------------------------------------------------
