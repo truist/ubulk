@@ -143,15 +143,30 @@ testPkgsrc() {
 		"can't cd to" "stderr complains about fake dir"
 }
 
+testBuildLog() {
+	checkDefaultsFile "BUILDLOG" "/var/log/ubulk-build.log" "somewhereelse"
 
-# BUILDLOG (default, setting)
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF &&  echo "BUILDLOG=./mybuildlog" >> $DEFAULTSCONF
+	runScript -c no -p no
+	checkResults 0 "script finishes cleanly" \
+		"^Logging to ./mybuildlog" "script obeyed the hard-coded default" \
+		"" "stderr is empty"
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
 
-	# default looks for correct value
-		# source defaults.conf ourselves
-		# check for correct value
-		# check that value doesn't overwrite already-set value
-		# write fake defaults.conf
-		# check that script obeys the fake defaults.conf
+	echo "BUILDLOG=./myotherbuildlog" > ./testubulk.conf
+	runScript -c no -p no -C ./testubulk.conf
+	checkResults 0 "script finishes cleanly" \
+		"^Logging to ./myotherbuildlog" "script obeyed the config-file value" \
+		"" "stderr is empty"
+}
+
+
+	# source defaults.conf ourselves
+	# check for correct value
+	# check that value doesn't overwrite already-set value
+	# write fake defaults.conf
+	# check that script obeys the fake defaults.conf
 	# setting overrides default
 	# command-arg overrides default
 	# command-arg overrides setting
