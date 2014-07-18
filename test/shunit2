@@ -816,9 +816,14 @@ _shunit_generateReport()
 
   echo
   if [ ${__shunit_testsTotal} -eq 1 ]; then
-    echo "Ran ${__shunit_testsTotal} test."
+    echo -n "Ran ${__shunit_assertsTotal} assertion"
   else
-    echo "Ran ${__shunit_testsTotal} tests."
+    echo -n "Ran ${__shunit_assertsTotal} assertions"
+  fi
+  if [ ${__shunit_assertsSkipped} -gt 0 ]; then
+      echo " (${__shunit_assertsSkipped} skipped)."
+  else
+      echo "."
   fi
 
   _shunit_failures_=''
