@@ -1,9 +1,5 @@
 #!/bin/sh
 
-# -p (default, setting, arg)
-# PKGSRC (default, setting)
-# BUILDLOG (default, setting)
-
 . ./common.sh
 
 oneTimeSetUp() {
@@ -57,19 +53,7 @@ testDashV() {
 }
 
 testConfig() {
-	unset CONFIG
-	VALUE=$(
-		. $DEFAULTSCONF
-		echo $CONFIG
-	)
-	assertEquals "CONFIG has expected hard-coded value" "/etc/ubulk.conf" "$VALUE"
-
-	VALUE=$(
-		CONFIG=/etc/fake
-		. $DEFAULTSCONF
-		echo $CONFIG
-	)
-	assertEquals "DEFAULTSCONF doesn't override already-set value" "/etc/fake" "$VALUE"
+	checkDefaultsFile "CONFIG" "/etc/ubulk.conf" "/etc/fake"
 
 	echo 'CONFIG=./fake.conf' > $DEFAULTSCONF
 	echo 'exit 23' > ./fake.conf
@@ -86,19 +70,7 @@ testConfig() {
 }
 
 testDoPkgChk() {
-	unset DOPKGCHK
-	VALUE=$(
-		. $DEFAULTSCONF
-		echo $DOPKGCHK
-	)
-	assertEquals "DOPKGCHK has expected hard-coded value" "yes" "$VALUE"
-
-	VALUE=$(
-		DOPKGCHK=no
-		. $DEFAULTSCONF
-		echo $DOPKGCHK
-	)
-	assertEquals "DOPKGCHK doesn't override already-set value" "no" "$VALUE"
+	checkDefaultsFile "DOPKGCHK" "yes" "no"
 
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
 	echo >> $DEFAULTSCONF && echo "DOPKGCHK=no" >> $DEFAULTSCONF
@@ -126,19 +98,7 @@ testDoPkgChk() {
 }
 
 testUpdatePkgsrc() {
-	unset UPDATEPKGSRC
-	VALUE=$(
-		. $DEFAULTSCONF
-		echo $UPDATEPKGSRC
-	)
-	assertEquals "UPDATEPKGSRC has expected hard-coded value" "yes" "$VALUE"
-
-	VALUE=$(
-		UPDATEPKGSRC=no
-		. $DEFAULTSCONF
-		echo $UPDATEPKGSRC
-	)
-	assertEquals "UPDATEPKGSRC doesn't override already-set value" "no" "$VALUE"
+	checkDefaultsFile "UPDATEPKGSRC" "yes" "no"
 
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
 	echo >> $DEFAULTSCONF &&  echo "UPDATEPKGSRC=no" >> $DEFAULTSCONF
@@ -154,18 +114,23 @@ testUpdatePkgsrc() {
 		"^Skipping pkgsrc update" "setting trumps hard-coded default" \
 		"" "nothing on stderr"
 
-	# this time skip the config file but trump the default from the command line
 	runScript -c no -p no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "command-arg trumps hard-coded default" \
 		"" "nothing on stderr"
 
-	# now trump the config file from the command line
 	runScript -C ./testubulk.conf -c no -p no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "command-arg trumps config file" \
 		"" "nothing on stderr"
 }
+
+testPkgsrc() {
+}
+
+
+# PKGSRC (default, setting)
+# BUILDLOG (default, setting)
 
 	# default looks for correct value
 		# source defaults.conf ourselves
@@ -211,6 +176,26 @@ checkResults() {
 		echo "$(cat $ERR)" | grep "$E_ERR" >/dev/null 2>&1
 		assertTrue "$ERR_MSG" $? || cat $ERR
 	fi
+}
+
+checkDefaultsFile() {
+	VAR=$1
+	E_VALUE=$2
+	T_VALUE=$3
+
+	eval "unset $VAR"
+	VALUE=$(
+		. $DEFAULTSCONF
+		eval "echo \$$VAR"
+	)
+	assertEquals "$VAR has expected hard-coded value" "$E_VALUE" "$VALUE"
+
+	VALUE=$(
+		eval "$VAR=$T_VALUE"
+		. $DEFAULTSCONF
+		eval "echo \$$VAR"
+	)
+	assertEquals "$VAR doesn't override already-set value" "$T_VALUE" "$VALUE"
 }
 
 . ./shunit2
