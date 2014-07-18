@@ -1,8 +1,14 @@
 #!/bin/sh
 
 cd test
-for t in *test.sh ; do
-	echo "# $t"
-	./$t
+for testFile in *test.sh ; do
+	echo "# $testFile"
+
+	./$testFile
+	RTRN=$?
 	echo
+
+	if [ 0 -ne $RTRN ]; then
+		exit $RTRN
+	fi
 done
