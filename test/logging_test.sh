@@ -126,12 +126,158 @@ EOF
 	checkLog "log shows the start and the error, but not the rest" "$E_LOG"
 }
 
-# LOGLINESLIMIT
-	# default value
-	# can be overridden
-	# behavior when 0
-# output when < LOGLINESLIMIT
-# output when > LOGLINESLIMIT
+testLogLinesLimitBasics() {
+	(
+		LOGPATH="$LOG"
+		. $UTILSH
+		echo "$LOGLINESLIMIT"  # (to log file)
+	) >$OUT 2>$ERR
+	checkLog "default LOGLINESLIMIT is 10" "10"
+
+	(
+		LOGPATH="$LOG"
+		LOGLINESLIMIT=5
+		. $UTILSH
+		echo "$LOGLINESLIMIT"  # (to log file)
+	) >$OUT 2>$ERR
+	checkLog "can override LOGLINESLIMIT" "5"
+}
+
+testDieLoggingWithLittleLogging() {
+	START="Starting some process"
+	(
+		LOGPATH="$LOG"
+		. $UTILSH
+		console "$START"
+		echo one
+		echo two
+		die 23
+	) >$OUT 2>$ERR
+	RTRN=$?
+
+	assertEquals "we exited as expected" 23 $RTRN
+
+	E_OUT="$(cat <<- EOF
+		Logging to $LOG
+		$START
+EOF
+	)"
+	checkOut "stdout shows what we expect" "$E_OUT"
+
+	E_ERR="$(cat <<- EOF
+		Error 23 while "$START"
+		 > one
+		 > two
+
+		See $LOG for details
+EOF
+	)"
+	checkErr "stderr shows the error, the prior console message, and the following logs" "$E_ERR"
+
+	E_LOG="$(cat <<- EOF
+		$START
+		one
+		two
+		Error 23 while "$START"
+EOF
+	)"
+	checkLog "log shows the start, the logs, and the error, but not the rest" "$E_LOG"
+}
+
+testDieLoggingWithLotsOfLogging() {
+	START="Starting some process"
+	(
+		LOGPATH="$LOG"
+		LOGLINESLIMIT=2   # assume this works
+		. $UTILSH
+		console "$START"
+		echo one
+		echo two
+		echo three
+		echo four
+		echo five
+		echo six
+		echo seven
+		die 23
+	) >$OUT 2>$ERR
+	RTRN=$?
+
+	assertEquals "we exited as expected" 23 $RTRN
+
+	E_OUT="$(cat <<- EOF
+		Logging to $LOG
+		$START
+EOF
+	)"
+	checkOut "stdout shows what we expect" "$E_OUT"
+
+	E_ERR="$(cat <<- EOF
+		Error 23 while "$START"
+		 > one
+		 > two
+		 > [...snip...]
+		 > six
+		 > seven
+
+		See $LOG for details
+EOF
+	)"
+	checkErr "stderr shows the error, the prior console message, and a subset of the following logs" "$E_ERR"
+
+	E_LOG="$(cat <<- EOF
+		$START
+		one
+		two
+		three
+		four
+		five
+		six
+		seven
+		Error 23 while "$START"
+EOF
+	)"
+	checkLog "log shows the start, the logs, and the error, but not the rest" "$E_LOG"
+}
+
+testDieLoggingWithZeroLogLinesLimit() {
+	START="Starting some process"
+	(
+		LOGPATH="$LOG"
+		LOGLINESLIMIT=0
+		. $UTILSH
+		console "$START"
+		echo one
+		echo two
+		die 23
+	) >$OUT 2>$ERR
+	RTRN=$?
+
+	assertEquals "we exited as expected" 23 $RTRN
+
+	E_OUT="$(cat <<- EOF
+		Logging to $LOG
+		$START
+EOF
+	)"
+	checkOut "stdout shows what we expect" "$E_OUT"
+
+	E_ERR="$(cat <<- EOF
+		Error 23 while "$START"
+
+		See $LOG for details
+EOF
+	)"
+	checkErr "stderr shows the error, the prior console message, and NO following logs" "$E_ERR"
+
+	E_LOG="$(cat <<- EOF
+		$START
+		one
+		two
+		Error 23 while "$START"
+EOF
+	)"
+	checkLog "log shows the start, the logs, and the error, but not the rest" "$E_LOG"
+}
 
 #-------------------------------------------------------------------------
 
