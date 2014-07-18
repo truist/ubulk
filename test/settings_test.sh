@@ -101,34 +101,69 @@ testDoPkgChk() {
 	assertEquals "DOPKGCHK doesn't override already-set value" "no" "$VALUE"
 
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
-	echo >> $DEFAULTSCONF &&  echo "UPDATEPKGSRC=no" >> $DEFAULTSCONF
 	echo >> $DEFAULTSCONF && echo "DOPKGCHK=no" >> $DEFAULTSCONF
-	runScript
+	runScript -p no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkg_chk" "script obeyed the hard-coded default" \
 		"" "nothing on stderr"
-
-	# use the default defaults file ('yes') (and the default config file)
 	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
-	# but turn off pkgsrc again
-	echo >> $DEFAULTSCONF &&  echo "UPDATEPKGSRC=no" >> $DEFAULTSCONF
-	# and turn off DOPKGCHK again in the config file
+
 	echo "DOPKGCHK=no" > ./testubulk.conf
-	runScript -C ./testubulk.conf
+	runScript -C ./testubulk.conf -p no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkg_chk" "setting trumps hard-coded default" \
 		"" "nothing on stderr"
 
-	# this time skip the config file but trump the default from the command line
-	runScript -c no
+	runScript -p no -c no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkg_chk" "command-arg trumps hard-coded default" \
 		"" "nothing on stderr"
 
-	# now trump the config file from the command line
-	runScript -C ./testubulk.conf -c no
+	runScript -C ./testubulk.conf -p no -c no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkg_chk" "command-arg trumps config file" \
+		"" "nothing on stderr"
+}
+
+testUpdatePkgsrc() {
+	unset UPDATEPKGSRC
+	VALUE=$(
+		. $DEFAULTSCONF
+		echo $UPDATEPKGSRC
+	)
+	assertEquals "UPDATEPKGSRC has expected hard-coded value" "yes" "$VALUE"
+
+	VALUE=$(
+		UPDATEPKGSRC=no
+		. $DEFAULTSCONF
+		echo $UPDATEPKGSRC
+	)
+	assertEquals "UPDATEPKGSRC doesn't override already-set value" "no" "$VALUE"
+
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF &&  echo "UPDATEPKGSRC=no" >> $DEFAULTSCONF
+	runScript -c no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pkgsrc update" "script obeyed the hard-coded default" \
+		"" "nothing on stderr"
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+
+	echo "UPDATEPKGSRC=no" > ./testubulk.conf
+	runScript -C ./testubulk.conf -c no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pkgsrc update" "setting trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	# this time skip the config file but trump the default from the command line
+	runScript -c no -p no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pkgsrc update" "command-arg trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	# now trump the config file from the command line
+	runScript -C ./testubulk.conf -c no -p no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pkgsrc update" "command-arg trumps config file" \
 		"" "nothing on stderr"
 }
 

@@ -86,7 +86,6 @@ LOGPATH=${BUILDLOG:?} . "$LIB_DIR/util.sh"
 ### START DOING ACTUAL WORK ###
 
 # update pkgsrc
-echo $UPDATEPKGSRC
 if [ "yes" = "$UPDATEPKGSRC" ]; then
 	console "Updating pkgsrc ($PKGSRC)"
 	cd "$PKGSRC" && git pull || die $?
