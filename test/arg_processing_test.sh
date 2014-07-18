@@ -33,21 +33,68 @@ tearDown() {
 #-------------------------------------------------------------------------
 
 testUnknownArg() {
-	runScript '-abcdefghijklmnopqrstuvwxyz'
+	runScript -abcdefghijklmnopqrstuvwxyz
 
-	checkResults 1 \
+	checkResults 1 "script exited non-zero" \
 		"" "stdout was empty" \
 		"^usage: " "stderr was usage"
 }
 
 testDashH() {
-	runScript '-h'
+	runScript -h
 
-	checkResults 0 \
+	checkResults 0 "script exited true" \
 		"" "stdout was empty" \
 		"^usage: " "stderr was usage"
 }
 
+testDashV() {
+	echo "exit 23" > $DEFAULTSCONF
+	PS4="UNIQUETESTVALUE " runScript -v
+
+	checkResults 23 "script exited as expected" \
+		"" "stdout has no output" \
+		"^$PS4" "stderr has verbose output"
+}
+
+testConfig() {
+	unset CONFIG
+	VALUE=$(
+		. $DEFAULTSCONF
+		echo $CONFIG
+	)
+	assertEquals "CONFIG has expected hard-coded value" "/etc/ubulk.conf" "$VALUE"
+
+	VALUE=$(
+		CONFIG=/etc/fake
+		. $DEFAULTSCONF
+		echo $CONFIG
+	)
+	assertEquals "$DEFAULTSCONF doesn't override already-set value" "/etc/fake" "$VALUE"
+
+	echo 'CONFIG=./fake.conf' > $DEFAULTSCONF
+	echo 'exit 23' > ./fake.conf
+	runScript
+	checkResults 23 "script is obeying the default CONFIG path, by default" \
+		"" "stdout has no output" \
+		"" "stderr has no output"
+
+	echo 'exit 24' > ./fake2.conf
+	runScript -C ./fake2.conf
+	checkResults 24 "script obeys command-arg over hard-coded default" \
+		"" "stdout has no output" \
+		"" "stderr has no output"
+}
+
+	# default looks for /etc/ubulk.conf
+		# source defaults.conf ourselves
+		# check for correct value
+		# check that value doesn't overwrite already-set value
+		# write fake defaults.conf
+		# check that script loads the path specified in the fake defaults.conf
+	# (setting overrides default - N/A in this case)
+	# command-arg overrides default
+	# (command-arg overrides setting - N/A in this case)
 #-------------------------------------------------------------------------
 
 runScript() {
@@ -58,15 +105,16 @@ runScript() {
 checkResults() {
 	local - && set -v
 	E_EXIT=$1
-	E_OUT="$2"
-	OUT_MSG="$3"
-	E_ERR="$4"
-	ERR_MSG="$5"
+	EXIT_MSG="$2"
+	E_OUT="$3"
+	OUT_MSG="$4"
+	E_ERR="$5"
+	ERR_MSG="$6"
 
 	if [ $E_EXIT -eq 0 ]; then
-		assertTrue "script exited 0" $RTRN
+		assertTrue "$EXIT_MSG" $RTRN
 	else
-		assertFalse "script exited non-zero" $RTRN
+		assertFalse "$EXIT_MSG" $RTRN
 	fi
 
 	if [ "" = "$E_OUT" ]; then
