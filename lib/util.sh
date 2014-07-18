@@ -9,6 +9,7 @@ if [ -n "$LOGPATH" ]; then
 	echo >$CONSOLEOUT "Logging to $LOGPATH"
 else
 	echo >&2 "ERROR: must set LOGPATH before slurping util.sh"
+	exit 1
 fi
 
 # handy method for printing stuff to the user; works in concert with die()

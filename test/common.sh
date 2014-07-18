@@ -3,8 +3,12 @@ DEFAULTSCONF=lib/defaults.conf
 UTILSH=lib/util.sh
 
 oneTimeSetUp() {
-	OUT=$SHUNIT_TMPDIR/stdout
-	ERR=$SHUNIT_TMPDIR/stderr
+	OUT="$SHUNIT_TMPDIR/stdout"
+	ERR="$SHUNIT_TMPDIR/stderr"
+
+	if fn_exists "localOneTimeSetUp" ; then
+		localOneTimeSetUp
+	fi
 }
 
 setUp() {
