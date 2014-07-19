@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. ./common.sh
+cd `dirname $0` && . ./common.sh
 
 FOUNDIT="foundit!"
 
@@ -59,20 +59,5 @@ testDiffNameRelPathSymlinkFromOtherDir() {
 }
 
 #-------------------------------------------------------------------------
-
-runScript() {
-	(
-		TO_RUN="$1"
-		shift
-
-		# a nasty hack, necessary because we are 'source'ing rather than calling
-		BASH_SOURCE="`pwd`/$TO_RUN"
-
-		. "$TO_RUN" "$@"
-
-		unset BASH_SOURCE
-	) >$OUT 2>&1
-	cat "$OUT"
-}
 
 . ./shunit2

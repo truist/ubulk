@@ -37,89 +37,11 @@ echo "$DEFAULTVARS" | while read LINE ; do
 	fi
 done
 
-# unset PATH (way at the bottom) so the code won't run any external commands.
-# then intercept every single external command call to try to avoid accidentally
-# modifying "real" things (mainly if/when tests don't behave as expected),
-# re-implementing some things to make them 'safe'. note that this doesn't
-# cover a whole bunch of issues, including redirection to a file. the right
-# answer here is a chroot, but that requires root.
-makeExplicitCommand() {
-	eval "alias $1=`command -v $1`"
-}
-makeExplicitCommand "awk"
-makeExplicitCommand "cat"
-makeExplicitCommand "cut"
-makeExplicitCommand "dirname"
-makeExplicitCommand "egrep"
-makeExplicitCommand "expr"
-makeExplicitCommand "grep"
-makeExplicitCommand "head"
-makeExplicitCommand "ls"
-makeExplicitCommand "mktemp"
-makeExplicitCommand "readlink"
-makeExplicitCommand "sed"
-makeExplicitCommand "tail"
-makeExplicitCommand "tee"
-makeExplicitCommand "tr"
-makeExplicitCommand "wc"
-makeExplicitCommand "xargs"
-
-makeFilteringCommand() {
-	local COMMAND
-	COMMAND=$1
-
-	local INITIAL_PWD
-	INITIAL_PWD=`pwd`
-
-	local FILTERINGCOMMAND
-	FILTERINGCOMMAND="$(cat <<- EOF
-		REAL$COMMAND=\`command -v $COMMAND\`
-		${COMMAND}() {
-			\$REAL$COMMAND "\$@"
-			RTRN=\$?
-
-			for LASTARG; do :; done
-			OK=0
-			if echo "\$LASTARG" | grep "^/tmp/" >/dev/null 2>&1 ; then
-				OK=1
-			elif echo "\$LASTARG" | grep "^[^/]\+" >/dev/null 2>&1 ; then
-				if echo "\`pwd\`" | grep "^/tmp/" >/dev/null 2>&1 ; then
-					OK=1
-				elif echo "\`pwd\`" | grep "^${INITIAL_PWD}" >/dev/null 2>&1 ; then
-					OK=1
-				fi
-			fi
-			if [ \$OK -eq 1 ]; then
-				return \$RTRN
-			else
-				echo >&2 "Tests can only $COMMAND in local (\`pwd\`) and tmp dirs: \$@"
-				exit 1
-			fi
-		}
-EOF
-	)"
-	eval "$FILTERINGCOMMAND"
-}
-makeFilteringCommand "chmod"
-makeFilteringCommand "cp"
-makeFilteringCommand "ln"
-makeFilteringCommand "mkdir"
-makeFilteringCommand "mv"
-makeFilteringCommand "rm"
-
-# we're never going to call the real git
-GIT_RESULT=0
-git() {
-	return $GIT_RESULT
-}
-
-# and now the final step:
-PATH=
-#set -x
-
 #-------------------------------------------------------------------------
 # implement a few handy functions
 oneTimeSetUp() {
+	switchToChroot "$SHUNIT_TMPDIR"
+
 	OUT="$SHUNIT_TMPDIR/stdout"
 	ERR="$SHUNIT_TMPDIR/stderr"
 
@@ -148,6 +70,22 @@ tearDown() {
 
 	cd $INITDIR
 	rm -rf $SHUNIT_TMPDIR/*
+}
+
+runScript() {
+	(
+		TO_RUN="$1"
+		shift
+
+		# a nasty hack, necessary because we are 'source'ing rather than calling
+		BASH_SOURCE="`pwd`/$TO_RUN"
+
+		. "$TO_RUN" "$@"
+
+		unset BASH_SOURCE
+	) >$OUT 2>$ERR
+	RTRN=$?
+	cat "$OUT"
 }
 
 checkResults() {
@@ -182,5 +120,110 @@ checkResults() {
 
 fn_exists() {
 	type $1 | grep >/dev/null 2>&1 'function'
+}
+
+#-------------------------------------------------------------------------
+# use an actual sandbox/chroot to isolate the main system from the tests
+
+switchToChroot() {
+	CHROOT_DIR="$1"
+	SCRIPT_PATH_PREFIX="${2:-test}"
+
+	TOKEN=".test_is_in_chroot"
+	if [ -f /$TOKEN -o "yes" = "$DISABLE_UBULK_TEST_SANDBOX" ]; then
+		return
+	fi
+
+	if [ ! -n "`command -v mksandbox`" ]; then
+		cat << EOF >&2
+ERROR: mksandbox is missing.
+These tests automatically set up a chroot sandbox to isolate the
+system from any real side-effects of the tests.  If you can't or
+don't want to install mksandbox (from pkgsrc), the tests can be
+run without the sandbox (but this is NOT recommended); just set
+DISABLE_UBULK_TEST_SANDBOX=yes in your environment.
+
+Note that creating the sandbox requires root permissions. The test
+script will automatically try to use sudo, if the tests are not
+run as root. The actual tests themselves will be run as your non-root
+user.
+
+EOF
+		exit 1
+	fi
+
+	echo "Building chroot in $CHROOT_DIR"
+
+	if [ `/usr/bin/id -u` -eq 0 ]; then
+		if [ -n "$UBULK_TEST_USER" ]; then
+			REAL_USER=$UBULK_TEST_USER
+		elif [ -n "$SUDO_USER" ]; then
+			REAL_USER=$SUDO_USER
+		elif [ -n "$SU_FROM" ]; then
+			REAL_USER=$SU_FROM
+		elif [ "$USER" != "root" ]; then
+			REAL_USER=$USER
+		else
+			echo >&2 "Can't determine non-root user to run the tests as"
+		fi
+		DO_SUDO=""
+	else
+		REAL_USER=`id -un`
+		DO_SUDO="sudo"
+	fi
+	REAL_GROUP=`id -gn`
+
+	trap > .trap.$$ && PRIOR_TRAPS=$(cat .trap.$$) && rm .trap.$$
+	trap 'handle_trap EXIT 0' 0
+	trap 'handle_trap INT 2' 2
+	trap 'handle_trap TERM 15' 15
+
+	: ${PKGDIR:=/usr/pkg}
+	$DO_SUDO mksandbox --without-pkgsrc --without-x --rodirs=${PKGDIR} "$CHROOT_DIR" >/dev/null
+
+	WORKDIR="workdir"
+	$DO_SUDO mkdir -p "$CHROOT_DIR/$WORKDIR"
+	$DO_SUDO chown $REAL_USER:$REAL_GROUP "$CHROOT_DIR/$WORKDIR"
+	cp -r ../* "$CHROOT_DIR/$WORKDIR/"
+
+	sudo touch "$CHROOT_DIR/$TOKEN"
+
+	echo "Starting chroot"
+	echo
+	$DO_SUDO chroot "$CHROOT_DIR" "/$WORKDIR/$SCRIPT_PATH_PREFIX/$0"
+	exit $?
+}
+
+cleanup() {
+	echo "Cleaning up chroot"
+	if mount | grep "on $CHROOT_DIR" >/dev/null 2>&1 ; then
+		$DO_SUDO $CHROOT_DIR/sandbox umount
+	fi
+	$DO_SUDO rm -rf $CHROOT_DIR
+}
+
+handle_trap() {
+	EXIT_CODE=$?
+	TRAP_NAME=$1
+	TRAP_NUMBER=$2
+
+	# first explitly turn off the traps, then try to restore the prior ones
+	trap EXIT
+	trap INT
+	trap TERM
+	eval "$PRIOR_TRAPS"
+	if [ -f /$TOKEN ]; then
+		exit $EXIT_CODE
+	else
+		cleanup
+
+		if [ $TRAP_NAME != 'EXIT' ]; then
+			kill -s $TRAP_NAME $$
+
+			exit `expr $TRAP_NUMBER + 128`
+		else
+			exit $EXIT_CODE
+		fi
+	fi
 }
 

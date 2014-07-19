@@ -69,8 +69,3 @@ die() {
 	exit ${exitcode}
 }
 
-# make a temp file
-tempname() {
-	mktemp /tmp/${0##*/}.XXXXXX || die -1
-}
-

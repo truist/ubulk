@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. ./common.sh
+cd `dirname $0` && . ./common.sh
 
 localOneTimeSetUp() {
 	LOG="$SHUNIT_TMPDIR/log"
