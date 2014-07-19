@@ -99,17 +99,17 @@ testDoPkgChk() {
 }
 
 testUpdatePkgsrc() {
-	checkDefaultsFile "UPDATEPKGSRC" "yes" "no"
+	checkDefaultsFile "DOPKGSRC" "yes" "no"
 
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
-	echo >> $DEFAULTSCONF &&  echo "UPDATEPKGSRC=no" >> $DEFAULTSCONF
+	echo >> $DEFAULTSCONF &&  echo "DOPKGSRC=no" >> $DEFAULTSCONF
 	runScript -c no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "script obeyed the hard-coded default" \
 		"" "nothing on stderr"
 	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
 
-	echo "UPDATEPKGSRC=no" > ./testubulk.conf
+	echo "DOPKGSRC=no" > ./testubulk.conf
 	runScript -C ./testubulk.conf -c no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "setting trumps hard-coded default" \
@@ -120,7 +120,7 @@ testUpdatePkgsrc() {
 		"^Skipping pkgsrc update" "command-arg trumps hard-coded default" \
 		"" "nothing on stderr"
 
-	echo "UPDATEPKGSRC=yes" > ./testubulk.conf
+	echo "DOPKGSRC=yes" > ./testubulk.conf
 	runScript -C ./testubulk.conf -c no -p no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "command-arg trumps config file" \

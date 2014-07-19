@@ -27,7 +27,7 @@ while getopts C:c:hp:v opt; do
 		C)  ARG_CONFIG="${OPTARG}" ;; # this one needs special handling
 		c)  stashArg "DOPKGCHK" ;;
 		h)  usage 0 ;;
-		p)  stashArg "UPDATEPKGSRC" ;;
+		p)  stashArg "DOPKGSRC" ;;
 		v)  set -x ;;
 		\?) usage ;;
     esac
@@ -103,7 +103,7 @@ LOGPATH=${BUILDLOG:?} . "$LIB_DIR/util.sh"
 ### START DOING ACTUAL WORK ###
 
 # update pkgsrc
-if [ "yes" = "$UPDATEPKGSRC" ]; then
+if [ "yes" = "$DOPKGSRC" ]; then
 	console "Updating pkgsrc ($PKGSRC)"
 	cd "$PKGSRC" && git pull || die $?
 else

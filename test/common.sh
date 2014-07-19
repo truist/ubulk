@@ -14,7 +14,7 @@ PKGSRC=./pkgsrc
 BUILDLOG=./ubulk-build.log
 
 # turn every build step off
-UPDATEPKGSRC=no
+DOPKGSRC=no
 DOPKGCHK=no
 
 # check that we got all the variables
