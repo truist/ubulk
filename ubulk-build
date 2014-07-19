@@ -114,6 +114,12 @@ fi
 if [ "yes" = "$DOPKGCHK" ]; then
 	console "Checking for missing, out-of-date, or extra packages"
 	if command -V pkg_chk >/dev/null 2>&1 ; then
+
+
+		# XXX need to var-ify "/etc/pkglist"
+
+
+
 		CHKRESULTS=$(pkg_chk -a -u -r -q -B -C /etc/pkglist) || die $?
 		if [ "" = "$CHKRESULTS" ]; then
 			console_err "pkg_chk says everything is in sync, exiting"
