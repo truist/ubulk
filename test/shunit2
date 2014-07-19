@@ -683,7 +683,7 @@ suite_addTest()
 _shunit_mktempDir()
 {
   # try the standard mktemp function
-  ( exec mktemp -dqt shunit.XXXXXX 2>/dev/null ) && return
+  ( exec mktemp -dqt shunit 2>/dev/null ) && return
 
   # the standard mktemp didn't work.  doing our own.
   if [ -r '/dev/urandom' -a -x '/usr/bin/od' ]; then
@@ -814,7 +814,7 @@ _shunit_generateReport()
           && _shunit_ok_=${SHUNIT_FALSE}
 
   echo
-  if [ ${__shunit_testsTotal} -eq 1 ]; then
+  if [ ${__shunit_assertsTotal} -eq 1 ]; then
     echo -n "Ran ${__shunit_assertsTotal} assertion"
   else
     echo -n "Ran ${__shunit_assertsTotal} assertions"

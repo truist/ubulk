@@ -1,44 +1,13 @@
 #-------------------------------------------------------------------------
 # set a few handy globals
+
 SCRIPTNAME=ubulk-build
 DEFAULTSCONF=lib/defaults.conf
 UTILSH=lib/util.sh
 
 #-------------------------------------------------------------------------
-# go to insane lengths to try to avoid touching the real system
-# (see way below for some handy functions, too)
+# some test helpers (and auto-setup)
 
-# point path-based settins to a local dir
-CONFIG=./ubulk.conf
-PKGSRC=./pkgsrc
-BUILDLOG=./ubulk-build.log
-
-# turn every build step off
-DOPKGSRC=no
-DOPKGCHK=no
-
-# check that we got all the variables
-TMPSCRIPT="./.tmpscript"
-cat <<- EOF >$TMPSCRIPT
-	#!/bin/sh
-	BEFORE=\`set\`
-	. ../$DEFAULTSCONF
-	AFTER=\`set\`
-	echo "\$BEFORE" "\$AFTER" | sort | uniq -u | grep "=" | grep -v "^PS.=" | grep -v "^PWD="
-EOF
-chmod +x $TMPSCRIPT
-DEFAULTVARS=$(
-	env -i $TMPSCRIPT | sed -r 's/^(.+)=.*$/\1/'
-)
-rm $TMPSCRIPT
-echo "$DEFAULTVARS" | while read LINE ; do
-	if [ -z "$(eval "echo \$$LINE")" ]; then
-		echo >&2 "$DEFAULTSCONF sets $LINE but this test doesn't override it"
-	fi
-done
-
-#-------------------------------------------------------------------------
-# implement a few handy functions
 oneTimeSetUp() {
 	switchToChroot "$SHUNIT_TMPDIR"
 
@@ -63,16 +32,20 @@ setUp() {
 
 	INITDIR=`pwd`
 	cd $SHUNIT_TMPDIR
+
+	neuterPaths "$SHUNIT_TMPDIR"
 }
 
 tearDown() {
 	local - && set -e
 
 	cd $INITDIR
-	rm -rf $SHUNIT_TMPDIR/*
+	if [ "no" != "$DELETE_CHROOT" ]; then 
+		rm -rf $SHUNIT_TMPDIR/*
+	fi
 }
 
-runScript() {
+_runScript() {
 	(
 		TO_RUN="$1"
 		shift
@@ -96,6 +69,8 @@ checkResults() {
 	OUT_MSG="$4"
 	E_ERR="$5"
 	ERR_MSG="$6"
+	E_LOG="$7"
+	LOG_MSG="$8"
 
 	if [ $E_EXIT -eq 0 ]; then
 		assertTrue "$EXIT_MSG" $RTRN || echo "($RTRN)"
@@ -116,10 +91,47 @@ checkResults() {
 		echo "$(cat $ERR)" | grep "$E_ERR" >/dev/null 2>&1
 		assertTrue "$ERR_MSG" $? || cat $ERR
 	fi
+
+	if [ "" != "$E_LOG" ]; then
+		echo "$(cat "$BUILDLOG")" | grep "$E_LOG" >/dev/null 2>&1
+		assertTrue "$LOG_MSG" $? || cat "$BUILDLOG"
+	fi
 }
 
 fn_exists() {
 	type $1 | grep >/dev/null 2>&1 'function'
+}
+
+neuterPaths() {
+	PATHROOT="$1"
+	# point path-based settings to a local dir
+	CONFIG="$PATHROOT/ubulk.conf"
+	PKGSRC="$PATHROOT/pkgsrc"
+	BUILDLOG="$PATHROOT/ubulk-build.log"
+
+	# turn every build step off
+	DOPKGSRC=no
+	DOPKGCHK=no
+
+	# check that we got all the variables
+	TMPSCRIPT="./.tmpscript"
+	cat <<- EOF >$TMPSCRIPT
+		#!/bin/sh
+		BEFORE=\`set\`
+		. $DEFAULTSCONF
+		AFTER=\`set\`
+		echo "\$BEFORE" "\$AFTER" | sort | uniq -u | grep "=" | grep -v "^PS.=" | grep -v "^PWD="
+	EOF
+	chmod +x $TMPSCRIPT
+	DEFAULTVARS=$(
+		env -i $TMPSCRIPT | sed -r 's/^(.+)=.*$/\1/'
+	)
+	rm $TMPSCRIPT
+	echo "$DEFAULTVARS" | while read LINE ; do
+		if [ -z "$(eval "echo \$$LINE")" ]; then
+			echo >&2 "$DEFAULTSCONF sets $LINE but this test doesn't override it"
+		fi
+	done
 }
 
 #-------------------------------------------------------------------------
@@ -131,6 +143,12 @@ switchToChroot() {
 
 	TOKEN=".test_is_in_chroot"
 	if [ -f /$TOKEN -o "yes" = "$DISABLE_UBULK_TEST_SANDBOX" ]; then
+		if [ "no" = "$DELETE_CHROOT" ]; then 
+			# disable shunit2's traps
+			trap 'handle_trap EXIT 0' 0
+			trap 'handle_trap INT 2' 2
+			trap 'handle_trap TERM 15' 15
+		fi
 		return
 	fi
 
@@ -152,7 +170,7 @@ EOF
 		exit 1
 	fi
 
-	echo "Building chroot in $CHROOT_DIR"
+	echo "Mounting chroot in $CHROOT_DIR"
 
 	if [ `/usr/bin/id -u` -eq 0 ]; then
 		if [ -n "$UBULK_TEST_USER" ]; then
@@ -186,20 +204,40 @@ EOF
 	$DO_SUDO chown $REAL_USER:$REAL_GROUP "$CHROOT_DIR/$WORKDIR"
 	cp -r ../* "$CHROOT_DIR/$WORKDIR/"
 
-	sudo touch "$CHROOT_DIR/$TOKEN"
+	$DO_SUDO touch "$CHROOT_DIR/$TOKEN"
 
-	echo "Starting chroot"
+	BOOTSTRAP="/tmp/bootstrap.$$"
+	cat <<- EOF > "$CHROOT_DIR/$BOOTSTRAP"
+		#!/bin/sh
+		cd /$WORKDIR/$SCRIPT_PATH_PREFIX/
+		DELETE_CHROOT=$DELETE_CHROOT $0
+		exit \$?
+EOF
+	$DO_SUDO chmod +x "$CHROOT_DIR/$BOOTSTRAP"
+
+	echo "Switching into chroot"
+	echo "---------------------"
 	echo
-	$DO_SUDO chroot "$CHROOT_DIR" "/$WORKDIR/$SCRIPT_PATH_PREFIX/$0"
-	exit $?
+	$DO_SUDO chroot -u $REAL_USER -g $REAL_GROUP "$CHROOT_DIR" "$BOOTSTRAP"
+	RTRN=$?
+
+	# shunit expects tests to be run, but all our tests were run in the chroot
+	__shunit_reportGenerated=${SHUNIT_TRUE}
+
+	exit $RTRN
 }
 
 cleanup() {
-	echo "Cleaning up chroot"
+	echo
+	echo "---------------------"
 	if mount | grep "on $CHROOT_DIR" >/dev/null 2>&1 ; then
+		echo "Unmounting chroot"
 		$DO_SUDO $CHROOT_DIR/sandbox umount
 	fi
-	$DO_SUDO rm -rf $CHROOT_DIR
+	if [ "no" != "$DELETE_CHROOT" ]; then 
+		echo "Deleting chroot"
+		$DO_SUDO rm -rf "$CHROOT_DIR"
+	fi
 }
 
 handle_trap() {
@@ -211,7 +249,10 @@ handle_trap() {
 	trap EXIT
 	trap INT
 	trap TERM
-	eval "$PRIOR_TRAPS"
+	if [ "no" != "$DELETE_CHROOT" ]; then 
+		eval "$PRIOR_TRAPS"
+	fi
+
 	if [ -f /$TOKEN ]; then
 		exit $EXIT_CODE
 	else

@@ -105,7 +105,8 @@ LOGPATH=${BUILDLOG:?} . "$LIB_DIR/util.sh"
 # update pkgsrc
 if [ "yes" = "$DOPKGSRC" ]; then
 	console "Updating pkgsrc ($PKGSRC)"
-	cd "$PKGSRC" && git pull || die $?
+	# in a subshell, to preserve pwd
+	(cd "$PKGSRC" && git pull) || die $?
 else
 	console "Skipping pkgsrc update"
 fi
