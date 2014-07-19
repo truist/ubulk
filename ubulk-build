@@ -114,25 +114,19 @@ fi
 # run pkg_chk
 if [ "yes" = "$DOPKGCHK" ]; then
 	console "Checking for missing, out-of-date, or extra packages"
-	if command -V pkg_chk >/dev/null 2>&1 ; then
-
-
-		# XXX need to var-ify "/etc/pkglist"
-
-
-
-		CHKRESULTS=$(pkg_chk -a -u -r -q -B -C /etc/pkglist) || die $?
+	if command -v $PKGCHK >/dev/null 2>&1 ; then
+		CHKRESULTS=$($PKGCHK -a -u -r -q -B -C $PKGLIST) || die $?
 		if [ "" = "$CHKRESULTS" ]; then
-			console_err "pkg_chk says everything is in sync, exiting"
+			console_err "$PKGCHK says everything is in sync, exiting"
 			exit 0
 		else
 			console "$(echo "$CHKRESULTS" | sed 's/^/  /')" || die $?
 		fi
 	else
-		console "Can't find pkg_chk; skipping"
+		console "Can't find $PKGCHK; skipping"
 	fi
 else
-	console "Skipping pkg_chk"
+	console "Skipping $PKGCHK"
 fi
 
 

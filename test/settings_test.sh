@@ -163,6 +163,36 @@ testBuildLog() {
 		"" "stderr is empty"
 }
 
+testPkgList() {
+	checkDefaultsFile "PKGLIST" "/etc/pkglist" "/etc/packagelist"
+
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF && echo "PKGLIST=/tmp/myfakepkglist" >> $DEFAULTSCONF
+	runScript -c yes
+	checkResults 1 "script dies as expected" \
+		"Checking for missing" "script ran pkg_chk" \
+		"Unable to read.*/tmp/myfakepkglist" "script complains about bad pkglist"
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+
+	echo "PKGLIST=/tmp/myotherfakepkglist" > ./testubulk.conf
+	runScript -C ./testubulk.conf -c yes
+	checkResults 1 "script dies as expected" \
+		"Checking for missing" "script ran pkg_chk" \
+		"Unable to read.*/tmp/myotherfakepkglist" "script complains about bad pkglist"
+}
+
+testPkgChk() {
+	checkDefaultsFile "PKGCHK" "pkg_chk" "package_check"
+
+	PKGCHK=package_check_fake
+	runScript -c yes
+	checkResults 0 "script finishes even with missing pkg_chk" \
+		"Can't find package_check_fake" "script looked for take pkg_chk" \
+		"" "nothing on stderr"
+
+	# this isn't really meant to be user-settable, so we don't test that it is
+}
+
 
 	# source defaults.conf ourselves
 	# check for correct value

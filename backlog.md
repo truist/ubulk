@@ -22,12 +22,12 @@
     - if pkg_chk finds no deltas, skip build
 * Option and command-arg to skip pkgsrc update
     - so you can just do the pkg_chk (now) or the build (later)
-
-## Build Backlog
-
 * Make some sort of automated test suite
     - at least covering the options/settings, and output
     - maybe in a chroot?
+
+## Build Backlog
+
 * Create the sandbox
     - config location (/usr/sandbox)
     - config mksandbox args (--without-x)

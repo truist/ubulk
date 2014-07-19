@@ -23,6 +23,10 @@ setUp() {
 	local - && set -e
 
 	cp ../$SCRIPTNAME $SHUNIT_TMPDIR/
+	if [ -d "$SHUNIT_TMPDIR/lib" ]; then
+		# this happens if DELETE_CHROOT is 'no'
+		mv "$SHUNIT_TMPDIR/lib" "$SHUNIT_TMPDIR/lib.prior"
+	fi
 	mkdir $SHUNIT_TMPDIR/lib
 	cp ../lib/* $SHUNIT_TMPDIR/lib/
 
@@ -108,10 +112,14 @@ neuterPaths() {
 	CONFIG="$PATHROOT/ubulk.conf"
 	PKGSRC="$PATHROOT/pkgsrc"
 	BUILDLOG="$PATHROOT/ubulk-build.log"
+	PKGLIST="$PATHROOT/pkglist"
 
 	# turn every build step off
 	DOPKGSRC=no
 	DOPKGCHK=no
+
+	# odds-and-ends
+	PKGCHK=pkg_chk
 
 	# check that we got all the variables
 	TMPSCRIPT="./.tmpscript"
@@ -197,7 +205,11 @@ EOF
 	trap 'handle_trap TERM 15' 15
 
 	: ${PKGDIR:=/usr/pkg}
-	$DO_SUDO mksandbox --without-pkgsrc --without-x --rodirs=${PKGDIR} "$CHROOT_DIR" >/dev/null
+	: ${PKGSRCDIR:=/usr/pkgsrc}
+	: ${PKG_DBDIR:=/var/db/pkg}
+	$DO_SUDO mksandbox --without-pkgsrc --without-x \
+		--rodirs=$PKGDIR,$PKGSRCDIR,$PKG_DBDIR \
+		"$CHROOT_DIR" >/dev/null
 
 	WORKDIR="workdir"
 	$DO_SUDO mkdir -p "$CHROOT_DIR/$WORKDIR"
