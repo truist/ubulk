@@ -40,7 +40,7 @@ if [ $# != 0 ]; then usage; fi
 
 # these can't be in util.sh because we need them to find util.sh
 check_for_relative_path() {
-	echo "$1" | grep -q "^[^/]" >/dev/null 2>&1
+	echo "$1" | grep "^[^/]" >/dev/null 2>&1
 	echo $?
 }
 
@@ -67,6 +67,12 @@ find_script_real_dir() {
 #-------------------------------------------------------------------------
 ### SETTINGS AND SETUP ###
 
+SCRIPT_DIR=$(find_script_real_dir)
+LIB_DIR="$SCRIPT_DIR/lib"
+
+# load the defaults
+. "$LIB_DIR/defaults.conf"
+
 # process a command-line-specified CONFIG
 if [ -n "$ARG_CONFIG" ]; then
 	if [ $(check_for_relative_path $ARG_CONFIG) -eq 0 ]; then
@@ -77,15 +83,7 @@ if [ -n "$ARG_CONFIG" ]; then
 		exit 1
 	fi
 	CONFIG="$ARG_CONFIG"
-else
-	CONFIG=/etc/ubulk.conf
 fi
-
-SCRIPT_DIR=$(find_script_real_dir)
-LIB_DIR="$SCRIPT_DIR/lib"
-
-# load the defaults
-. "$LIB_DIR/defaults.conf"
 
 # load the config file
 if [ -f "$CONFIG" ]; then

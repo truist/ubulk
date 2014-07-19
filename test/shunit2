@@ -687,8 +687,7 @@ _shunit_mktempDir()
 
   # the standard mktemp didn't work.  doing our own.
   if [ -r '/dev/urandom' -a -x '/usr/bin/od' ]; then
-    _shunit_random_=`/usr/bin/od -vAn -N4 -tx4 </dev/urandom \
-        |sed 's/^[^0-9a-f]*//'`
+    _shunit_random_=`/usr/bin/od -vAn -N4 -tx4 </dev/urandom | tr -d ' '`
   elif [ -n "${RANDOM:-}" ]; then
     # $RANDOM works
     _shunit_random_=${RANDOM}${RANDOM}${RANDOM}$$
@@ -702,7 +701,7 @@ _shunit_mktempDir()
   ( umask 077 && mkdir "${_shunit_tmpDir_}" ) || \
       _shunit_fatal 'could not create temporary directory! exiting'
 
-  echo ${_shunit_tmpDir_}
+  echo "${_shunit_tmpDir_}"
   unset _shunit_date_ _shunit_random_ _shunit_tmpDir_
 }
 

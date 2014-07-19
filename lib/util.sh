@@ -1,9 +1,10 @@
+set -e
 
 # redirect stdout and stderr to a file, but leave a way to send messages
 # to the 'real' stdout and stderr
 if [ -n "$LOGPATH" ]; then
 	echo -n >"$LOGPATH"
-	exec 3>&1 4>&2 1>>"$LOGPATH" 2>&1
+	exec 3>&1 4>&2 1>"$LOGPATH" 2>&1
 	CONSOLEOUT=/dev/fd/3
 	CONSOLEERR=/dev/fd/4
 	echo >$CONSOLEOUT "Logging to $LOGPATH"
