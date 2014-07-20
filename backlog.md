@@ -32,16 +32,13 @@
     - config location (/usr/sandbox)
     - config mksandbox args (--without-x)
     - mksandbox --rwdirs=/var/spool
-    - before running pkg_chk
-    - install mksandbox if necessary
-* Un-create the sandbox, on new run
-    - before pkgsrc update
-    - if it's already mounted, unmount it
-    - if it already exists, delete it
+    - after running pkg_chk
+    - install traps/handlers to tear down the sandbox no matter how the build ends
 * Option and command-arg to ignore/assume sandbox state
     - i.e. if you just want to leave the prior sandbox up
     - if set, warn if system /etc/mk.conf is newer than sandbox /etc/mk.conf
-* Update "install mksandbox" step to use an isolated build and install location
+* Install mksandbox if it's missing
+    - use an isolated build and install location
     - follow pattern from installing pbulk
     - should work even if the rest of pkgsrc is messy
     - workdirs should be totally isolated
@@ -58,10 +55,6 @@
     - use "ignore sandbox" option/arg to control whether setup stuff is done
     - summary to stdout / details to a log file
         - show log file path in output/email
-* Un-mount the sandbox
-    - after the chroot phase
-    - error in chroot phase should still unmount sandbox before exiting
-    - obey "ignore sandbox" option/arg
 * Install pbulk
     - during chroot setup phase
     - remove ok pkg_bulk dir if one is there
@@ -106,6 +99,9 @@
         - but still exit with the right code
     - figure out what junk is left behind and delete it
         - maybe wait until sandbox is unmounted?
+* Get the tests passing on a bare system
+    - i.e. uninstall pkg_chk and mksandbox, etc.
+* Get the tests passing on a non-root OSX pkgsrc
 * Option and command-arg to retry / continue / do a quick build
     - auto-set all the 'skip' options
     - do a manual 'scan' and 'build'

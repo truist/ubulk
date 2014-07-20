@@ -6,13 +6,16 @@ set -e
 
 usage() {
 	EXITCODE=$1
-	echo >&2 "usage: ${0##*/} [-C /path/to/ubulk.conf]"
-	echo >&2 "                   [-c (yes|no)] [-p (yes|no)]"
-	echo >&2 "                   [-hv]"
-	echo >&2 "       -c (yes|no) Whether to run pkg_chk before building"
-	echo >&2 "       -h          This help"
-	echo >&2 "       -p (yes|no) Whether to update pkgsrc before building"
-	echo >&2 "       -v          Turn on verbose mode"
+	cat << EOF >&2
+usage: ${0##*/} [-C /path/to/ubulk.conf]"
+                   [-c (yes|no)] [-p (yes|no)]"
+                   [-hv]"
+       -c (yes|no) Whether to run pkg_chk before building"
+       -h          This help"
+       -p (yes|no) Whether to update pkgsrc before building"
+       -s (yes|no) Whether to create and mount a sandbox before building"
+       -v          Turn on verbose mode"
+EOF
 	exit ${1:-1}
 }
 
@@ -22,12 +25,13 @@ stashArg() {
 	ARG_STASH="$ARG_STASH $1=\"${OPTARG}\" ;"
 }
 
-while getopts C:c:hp:v opt; do
+while getopts C:c:hp:s:v opt; do
     case $opt in
 		C)  ARG_CONFIG="${OPTARG}" ;; # this one needs special handling
 		c)  stashArg "DOPKGCHK" ;;
 		h)  usage 0 ;;
 		p)  stashArg "DOPKGSRC" ;;
+		s)  stashArg "DOSANDBOX" ;;
 		v)  set -x ;;
 		\?) usage ;;
     esac
@@ -127,6 +131,23 @@ if [ "yes" = "$DOPKGCHK" ]; then
 	fi
 else
 	console "Skipping $PKGCHK"
+fi
+
+if [ "yes" = "$DOSANDBOX" ]; then
+	console "Mounting sandbox ($SANDBOXDIR)"
+	if echo "$SANDBOXDIR" | grep "^[^/].*" >/dev/null 2>&1 ; then
+		console_err "SANDBOXDIR must be an absolute path ($SANDBOXDIR)"
+		exit 1
+	fi
+	if command -v "$MKSANDBOX" >/dev/null 2>&1 ; then
+		"$MKSANDBOX" $MKSANDBOXARGS "$SANDBOXDIR" || die $?
+		"$SANDBOXDIR/sandbox" umount
+	else
+		console_err "Can't find $MKSANDBOX, please install it and/or set MKSANDBOX"
+		exit 1
+	fi
+else
+	console "Skipping sandbox creation"
 fi
 
 

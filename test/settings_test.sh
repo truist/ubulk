@@ -98,7 +98,7 @@ testDoPkgChk() {
 		"" "nothing on stderr"
 }
 
-testUpdatePkgsrc() {
+testDoPkgsrc() {
 	checkDefaultsFile "DOPKGSRC" "yes" "no"
 
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
@@ -187,10 +187,96 @@ testPkgChk() {
 	PKGCHK=package_check_fake
 	runScript -c yes
 	checkResults 0 "script finishes even with missing pkg_chk" \
-		"Can't find package_check_fake" "script looked for take pkg_chk" \
+		"Can't find package_check_fake" "script looked for fake pkg_chk" \
 		"" "nothing on stderr"
 
 	# this isn't really meant to be user-settable, so we don't test that it is
+}
+
+testMkSandbox() {
+	checkDefaultsFile "MKSANDBOX" "mksandbox" "make_a_sandbox"
+
+	MKSANDBOX=make_a_sandbox
+	runScript -s yes
+	checkResults 1 "script dies when mksandbox is missing" \
+		"Logging to" "regular stuff on stdout" \
+		"Can't find make_a_sandbox" "script looked for fake mksandbox"
+
+	# this isn't really meant to be user-settable, so we don't test that it is
+}
+
+testSandboxDir() {
+	checkDefaultsFile "SANDBOXDIR" "/usr/sandbox" "/usr/sandboxers"
+
+	TEST_SANDBOX_DIR="/tmp/sandbox1"
+	mkdir "$TEST_SANDBOX_DIR"
+	touch "$TEST_SANDBOX_DIR/sandbox"
+	#chmod 444 "$TEST_SANDBOX_DIR/sandbox"
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF && echo "SANDBOXDIR=$TEST_SANDBOX_DIR" >> $DEFAULTSCONF
+	runScript -s yes
+	checkResults 0 "script will make a sandbox anywhere!" \
+		"Mounting sandbox" "script ran mksandbox step" \
+		"" "mksandbox never complains!"
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+
+	# XXX
+
+#	echo "SANDBOXDIR=/tmp/myotherfakepkglist" > ./testubulk.conf
+#	runScript -C ./testubulk.conf -c yes
+#	checkResults 1 "script dies as expected" \
+#		"Checking for missing" "script ran pkg_chk" \
+#		"Unable to read.*/tmp/myotherfakepkglist" "script complains about bad pkglist"
+}
+
+testDoSandbox() {
+	checkDefaultsFile "DOSANDBOX" "yes" "no"
+
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF &&  echo "DOSANDBOX=no" >> $DEFAULTSCONF
+	runScript
+	checkResults 0 "script exits cleanly" \
+		"^Skipping sandbox creation" "script obeyed the hard-coded default" \
+		"" "nothing on stderr"
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+
+	echo "DOSANDBOX=no" > ./testubulk.conf
+	runScript -C ./testubulk.conf
+	checkResults 0 "script exits cleanly" \
+		"^Skipping sandbox creation" "setting trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	runScript -s no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping sandbox creation" "command-arg trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	echo "DOSANDBOX=yes" > ./testubulk.conf
+	runScript -C ./testubulk.conf -s no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping sandbox creation" "command-arg trumps config file" \
+		"" "nothing on stderr"
+}
+
+testMkSandboxArgs() {
+	checkDefaultsFile "MKSANDBOXARGS" "--without-x --rwdirs=/var/spool" "--fakeargs"
+
+	# XXX
+
+#	TEST_ARGS="--totallyfake"
+#	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+#	echo >> $DEFAULTSCONF && echo "MKSANDBOXARGS=$TEST_ARGS" >> $DEFAULTSCONF
+#	runScript -s yes
+#	checkResults 0 "script will make a sandbox anywhere!" \
+#		"Mounting andbox" "script ran mksandbox step" \
+#		"" "mksandbox never complains!"
+#	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+
+#	echo "SANDBOXDIR=/tmp/myotherfakepkglist" > ./testubulk.conf
+#	runScript -C ./testubulk.conf -c yes
+#	checkResults 1 "script dies as expected" \
+#		"Checking for missing" "script ran pkg_chk" \
+#		"Unable to read.*/tmp/myotherfakepkglist" "script complains about bad pkglist"
 }
 
 

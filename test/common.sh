@@ -25,6 +25,7 @@ setUp() {
 	cp ../$SCRIPTNAME $SHUNIT_TMPDIR/
 	if [ -d "$SHUNIT_TMPDIR/lib" ]; then
 		# this happens if DELETE_CHROOT is 'no'
+		rm -rf "$SHUNIT_TMPDIR/lib.prior"
 		mv "$SHUNIT_TMPDIR/lib" "$SHUNIT_TMPDIR/lib.prior"
 	fi
 	mkdir $SHUNIT_TMPDIR/lib
@@ -113,13 +114,17 @@ neuterPaths() {
 	PKGSRC="$PATHROOT/pkgsrc"
 	BUILDLOG="$PATHROOT/ubulk-build.log"
 	PKGLIST="$PATHROOT/pkglist"
+	SANDBOXDIR="$PATHROOT/sandbox"
 
 	# turn every build step off
 	DOPKGSRC=no
 	DOPKGCHK=no
+	DOSANDBOX=no
 
 	# odds-and-ends
 	PKGCHK=pkg_chk
+	MKSANDBOX=mksandbox
+	MKSANDBOXARGS="--without-x --rwdirs=/var/spool"
 
 	# check that we got all the variables
 	TMPSCRIPT="./.tmpscript"
@@ -136,7 +141,7 @@ neuterPaths() {
 	)
 	rm $TMPSCRIPT
 	echo "$DEFAULTVARS" | while read LINE ; do
-		if [ -z "$(eval "echo \$$LINE")" ]; then
+		if [ -z "$(eval "echo \"\$$LINE\"")" ]; then
 			echo >&2 "$DEFAULTSCONF sets $LINE but this test doesn't override it"
 		fi
 	done
@@ -166,13 +171,13 @@ ERROR: mksandbox is missing.
 These tests automatically set up a chroot sandbox to isolate the
 system from any real side-effects of the tests.  If you can't or
 don't want to install mksandbox (from pkgsrc), the tests can be
-run without the sandbox (but this is NOT recommended); just set
-DISABLE_UBULK_TEST_SANDBOX=yes in your environment.
+run without the sandbox (but this is NOT recommended - they run as
+root!); but if that's what you want, set DISABLE_UBULK_TEST_SANDBOX=yes
+in your environment.
 
 Note that creating the sandbox requires root permissions. The test
 script will automatically try to use sudo, if the tests are not
-run as root. The actual tests themselves will be run as your non-root
-user.
+run as root.
 
 EOF
 		exit 1
@@ -180,24 +185,9 @@ EOF
 
 	echo "Mounting chroot in $CHROOT_DIR"
 
-	if [ `/usr/bin/id -u` -eq 0 ]; then
-		if [ -n "$UBULK_TEST_USER" ]; then
-			REAL_USER=$UBULK_TEST_USER
-		elif [ -n "$SUDO_USER" ]; then
-			REAL_USER=$SUDO_USER
-		elif [ -n "$SU_FROM" ]; then
-			REAL_USER=$SU_FROM
-		elif [ "$USER" != "root" ]; then
-			REAL_USER=$USER
-		else
-			echo >&2 "Can't determine non-root user to run the tests as"
-		fi
-		DO_SUDO=""
-	else
-		REAL_USER=`id -un`
+	if [ `/usr/bin/id -u` -ne 0 ]; then
 		DO_SUDO="sudo"
 	fi
-	REAL_GROUP=`id -gn`
 
 	trap > .trap.$$ && PRIOR_TRAPS=$(cat .trap.$$) && rm .trap.$$
 	trap 'handle_trap EXIT 0' 0
@@ -213,8 +203,7 @@ EOF
 
 	WORKDIR="workdir"
 	$DO_SUDO mkdir -p "$CHROOT_DIR/$WORKDIR"
-	$DO_SUDO chown $REAL_USER:$REAL_GROUP "$CHROOT_DIR/$WORKDIR"
-	cp -r ../* "$CHROOT_DIR/$WORKDIR/"
+	$DO_SUDO cp -r ../* "$CHROOT_DIR/$WORKDIR/"
 
 	$DO_SUDO touch "$CHROOT_DIR/$TOKEN"
 
@@ -230,7 +219,7 @@ EOF
 	echo "Switching into chroot"
 	echo "---------------------"
 	echo
-	$DO_SUDO chroot -u $REAL_USER -g $REAL_GROUP "$CHROOT_DIR" "$BOOTSTRAP"
+	$DO_SUDO chroot "$CHROOT_DIR" "$BOOTSTRAP"
 	RTRN=$?
 
 	# shunit expects tests to be run, but all our tests were run in the chroot
