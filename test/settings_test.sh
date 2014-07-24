@@ -208,25 +208,25 @@ testMkSandbox() {
 testSandboxDir() {
 	checkDefaultsFile "SANDBOXDIR" "/usr/sandbox" "/usr/sandboxers"
 
-	TEST_SANDBOX_DIR="/tmp/sandbox1"
-	mkdir "$TEST_SANDBOX_DIR"
-	touch "$TEST_SANDBOX_DIR/sandbox"
-	#chmod 444 "$TEST_SANDBOX_DIR/sandbox"
+	TEST_SANDBOX_DIR="$SHUNIT_TMPDIR/tmp/sandbox1"
+	assertTrue 'sandbox does not exist yet' "[ ! -r '$TEST_SANDBOX_DIR/sandbox' ]"
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
 	echo >> $DEFAULTSCONF && echo "SANDBOXDIR=$TEST_SANDBOX_DIR" >> $DEFAULTSCONF
 	runScript -s yes
 	checkResults 0 "script will make a sandbox anywhere!" \
 		"Mounting sandbox" "script ran mksandbox step" \
 		"" "mksandbox never complains!"
+	assertTrue 'sandbox was created' "[ -r '$TEST_SANDBOX_DIR/sandbox' ]"
 	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
 
-	# XXX
-
-#	echo "SANDBOXDIR=/tmp/myotherfakepkglist" > ./testubulk.conf
-#	runScript -C ./testubulk.conf -c yes
-#	checkResults 1 "script dies as expected" \
-#		"Checking for missing" "script ran pkg_chk" \
-#		"Unable to read.*/tmp/myotherfakepkglist" "script complains about bad pkglist"
+	TEST_SANDBOX_DIR="$SHUNIT_TMPDIR/tmp/sandbox2"
+	assertTrue 'sandbox does not exist yet' "[ ! -r '$TEST_SANDBOX_DIR/sandbox' ]"
+	echo "SANDBOXDIR=$TEST_SANDBOX_DIR" > ./testubulk.conf
+	runScript -C ./testubulk.conf -s yes
+	checkResults 0 "script will make a sandbox anywhere!" \
+		"Mounting sandbox" "script ran mksandbox step" \
+		"" "mksandbox never complains!"
+	assertTrue 'sandbox was created' "[ -r '$TEST_SANDBOX_DIR/sandbox' ]"
 }
 
 testDoSandbox() {
@@ -261,22 +261,20 @@ testDoSandbox() {
 testMkSandboxArgs() {
 	checkDefaultsFile "MKSANDBOXARGS" "--without-x --rwdirs=/var/spool" "--fakeargs"
 
-	# XXX
+	TEST_ARGS="--totallyfake"
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF && echo "MKSANDBOXARGS=$TEST_ARGS" >> $DEFAULTSCONF
+	runScript -s yes
+	checkResults 1 "illegal args means mksandbox failure" \
+		"Mounting sandbox" "script ran mksandbox step" \
+		"usage: mksandbox" "mksandbox complaints about invalid args"
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
 
-#	TEST_ARGS="--totallyfake"
-#	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
-#	echo >> $DEFAULTSCONF && echo "MKSANDBOXARGS=$TEST_ARGS" >> $DEFAULTSCONF
-#	runScript -s yes
-#	checkResults 0 "script will make a sandbox anywhere!" \
-#		"Mounting andbox" "script ran mksandbox step" \
-#		"" "mksandbox never complains!"
-#	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
-
-#	echo "SANDBOXDIR=/tmp/myotherfakepkglist" > ./testubulk.conf
-#	runScript -C ./testubulk.conf -c yes
-#	checkResults 1 "script dies as expected" \
-#		"Checking for missing" "script ran pkg_chk" \
-#		"Unable to read.*/tmp/myotherfakepkglist" "script complains about bad pkglist"
+	echo "MKSANDBOXARGS=$TEST_ARGS" > ./testubulk.conf
+	runScript -C ./testubulk.conf -s yes
+	checkResults 1 "illegal args means mksandbox failure" \
+		"Mounting sandbox" "script ran mksandbox step" \
+		"usage: mksandbox" "mksandbox complaints about invalid args"
 }
 
 

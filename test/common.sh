@@ -24,7 +24,7 @@ setUp() {
 
 	cp ../$SCRIPTNAME $SHUNIT_TMPDIR/
 	if [ -d "$SHUNIT_TMPDIR/lib" ]; then
-		# this happens if DELETE_CHROOT is 'no'
+		# this happens if DELETE_SANDBOX is 'no'
 		rm -rf "$SHUNIT_TMPDIR/lib.prior"
 		mv "$SHUNIT_TMPDIR/lib" "$SHUNIT_TMPDIR/lib.prior"
 	fi
@@ -44,8 +44,10 @@ setUp() {
 tearDown() {
 	local - && set -e
 
+	cleanupSandboxes
+
 	cd $INITDIR
-	if [ "no" != "$DELETE_CHROOT" ]; then 
+	if [ "no" != "$DELETE_SANDBOX" ]; then 
 		rm -rf $SHUNIT_TMPDIR/*
 	fi
 }
@@ -156,7 +158,7 @@ switchToChroot() {
 
 	TOKEN=".test_is_in_chroot"
 	if [ -f /$TOKEN -o "yes" = "$DISABLE_UBULK_TEST_SANDBOX" ]; then
-		if [ "no" = "$DELETE_CHROOT" ]; then 
+		if [ "no" = "$DELETE_SANDBOX" ]; then 
 			# disable shunit2's traps
 			trap 'handle_trap EXIT 0' 0
 			trap 'handle_trap INT 2' 2
@@ -183,7 +185,7 @@ EOF
 		exit 1
 	fi
 
-	echo "Mounting chroot in $CHROOT_DIR"
+	echo "Mounting sandbox in $CHROOT_DIR"
 
 	if [ `/usr/bin/id -u` -ne 0 ]; then
 		DO_SUDO="sudo"
@@ -211,7 +213,7 @@ EOF
 	cat <<- EOF > "$CHROOT_DIR/$BOOTSTRAP"
 		#!/bin/sh
 		cd /$WORKDIR/$SCRIPT_PATH_PREFIX/
-		DELETE_CHROOT=$DELETE_CHROOT $0
+		DELETE_SANDBOX=$DELETE_SANDBOX $0
 		exit \$?
 EOF
 	$DO_SUDO chmod +x "$CHROOT_DIR/$BOOTSTRAP"
@@ -232,12 +234,18 @@ cleanup() {
 	echo
 	echo "---------------------"
 	if mount | grep "on $CHROOT_DIR" >/dev/null 2>&1 ; then
-		echo "Unmounting chroot"
-		$DO_SUDO $CHROOT_DIR/sandbox umount
+		echo "Unmounting sandbox"
+		$DO_SUDO "$CHROOT_DIR/sandbox" umount  # this doesn't emit an appropriate return code
+		if mount | grep "on $CHROOT_DIR" >/dev/null 2>&1 ; then
+			echo "Problem unmounting sandbox - exiting"
+			exit 1
+		fi
 	fi
-	if [ "no" != "$DELETE_CHROOT" ]; then 
-		echo "Deleting chroot"
+	if [ "no" != "$DELETE_SANDBOX" ]; then 
+		echo "Deleting sandbox dir"
 		$DO_SUDO rm -rf "$CHROOT_DIR"
+	else
+		echo "Leaving sandbox dir ($CHROOT_DIR)"
 	fi
 }
 
@@ -250,7 +258,7 @@ handle_trap() {
 	trap EXIT
 	trap INT
 	trap TERM
-	if [ "no" != "$DELETE_CHROOT" ]; then 
+	if [ "no" != "$DELETE_SANDBOX" ]; then 
 		eval "$PRIOR_TRAPS"
 	fi
 
@@ -267,5 +275,31 @@ handle_trap() {
 			exit $EXIT_CODE
 		fi
 	fi
+}
+
+# this is way at the bottom because vim chokes on the syntax highlighting
+cleanupSandboxes() {
+	# if you want this cleanup script to catch your sandbox, it had better be
+	# under $SHUNIT_TMPDIR
+	GREPSTR="on $SHUNIT_TMPDIR.\+/usr/bin type null"
+	for c in 1 2 3 4 5 ; do # 'sandbox umount' doesn't return an appropriate exit code, so limit the number of attempts manually
+		MOUNTED="$(mount)"
+		echo "MOUNTED: $MOUNTED"
+		SANDBOXES="$(echo "$MOUNTED" | grep "$GREPSTR")" || SANDBOXES=""
+		echo "SANDBOXES: $SANDBOXES"
+		if [ -n "$SANDBOXES" ]; then
+			if [ 5 -eq $c ]; then
+				echo >&2 "We've tried 5 times to clean up sandbox mounts, and there are still some left:"
+				echo >&2 "$MOUNTED"
+				echo >&2 "...so we're giving up and exiting"
+				exit 1
+			fi
+			SANDBOXES="$(echo "$SANDBOXES" | head -n 1)"
+			SBDIR="$(echo "$SANDBOXES" | sed -r "s#^.*(${SHUNIT_TMPDIR}.+)/usr/bin.*\$#\1#")"
+			"$SBDIR/sandbox" umount
+		else
+			break
+		fi
+	done
 }
 

@@ -141,7 +141,6 @@ if [ "yes" = "$DOSANDBOX" ]; then
 	fi
 	if command -v "$MKSANDBOX" >/dev/null 2>&1 ; then
 		"$MKSANDBOX" $MKSANDBOXARGS "$SANDBOXDIR" || die $?
-		"$SANDBOXDIR/sandbox" umount
 	else
 		console_err "Can't find $MKSANDBOX, please install it and/or set MKSANDBOX"
 		exit 1
