@@ -1,5 +1,3 @@
-set -e
-
 # redirect stdout and stderr to a file, but leave a way to send messages
 # to the 'real' stdout and stderr
 if [ -n "$LOGPATH" ]; then
@@ -67,5 +65,41 @@ die() {
 	echo "See $LOGPATH for details" >$CONSOLEERR
 
 	exit ${exitcode}
+}
+
+register_traps() {
+	TRAP_CALLBACK="$1"
+
+	trap 'handle_trap EXIT 0' 0
+	trap 'handle_trap INT 2' 2
+	trap 'handle_trap TERM 15' 15
+}
+
+disable_traps() {
+	trap EXIT
+	trap INT
+	trap TERM
+}
+
+handle_trap() {
+	EXIT_CODE=$?
+	TRAP_NAME=$1
+	TRAP_NUMBER=$2
+
+	disable_traps
+
+	$TRAP_CALLBACK
+
+	if [ $TRAP_NAME != 'EXIT' ]; then
+		# propagate the trap, now that we're done and aren't catching it anymore
+		# (and do it in a way that's test-compatible)
+		if [ -z "$SUBSHELL_PID" ]; then
+			kill -s $TRAP_NAME $$
+		fi
+		# exit according to convention, if we're still here
+		exit `expr $TRAP_NUMBER + 128`
+	else
+		exit $EXIT_CODE
+	fi
 }
 

@@ -1,9 +1,5 @@
 #!/bin/sh
 
-# die on error (except in functions and various other circumstances)
-# (we should be manually handling all possible errors, so this is "just in case")
-set -e
-
 usage() {
 	EXITCODE=$1
 	cat << EOF >&2
@@ -51,6 +47,8 @@ check_for_relative_path() {
 find_script_real_dir() {
 	set -e
 	if [ -n "$BASH_SOURCE" ]; then
+		# this is really only used in test code, but just in case we ever
+		# switch to an explicit bash script, it will also work then
 		SOURCE="${BASH_SOURCE}"
 	else
 		SOURCE="$0"
@@ -133,6 +131,25 @@ else
 	console "Skipping $PKGCHK"
 fi
 
+trap_cleanup() {
+	console
+	console "---------------------"
+	if [ $TRAP_NAME != 'EXIT' ]; then
+		console_err "Caught signal '$TRAP_NAME', cleaning up"
+	fi
+
+	GREPSTR="on $SANDBOXDIR.\+ type null"
+	if mount | grep "$GREPSTR" >/dev/null 2>&1 ; then
+		console "Unmounting sandbox ($SANDBOXDIR)"
+		"$SANDBOXDIR/sandbox" umount  # this doesn't emit an appropriate return code
+		if mount | grep "$GREPSTR" >/dev/null 2>&1 ; then
+			console_err "Problem unmounting sandbox - exiting"
+			exit 1
+		fi
+	fi
+	console "Deleting sandbox ($SANDBOXDIR)"
+	rm -rf "$SANDBOXDIR"
+}
 if [ "yes" = "$DOSANDBOX" ]; then
 	console "Mounting sandbox ($SANDBOXDIR)"
 	if echo "$SANDBOXDIR" | grep "^[^/].*" >/dev/null 2>&1 ; then
@@ -140,6 +157,9 @@ if [ "yes" = "$DOSANDBOX" ]; then
 		exit 1
 	fi
 	if command -v "$MKSANDBOX" >/dev/null 2>&1 ; then
+		# set up traps so we can clean up the sandbox no matter how we end
+		register_traps 'trap_cleanup'
+		# make the sandbox
 		"$MKSANDBOX" $MKSANDBOXARGS "$SANDBOXDIR" || die $?
 	else
 		console_err "Can't find $MKSANDBOX, please install it and/or set MKSANDBOX"

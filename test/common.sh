@@ -22,21 +22,21 @@ oneTimeSetUp() {
 setUp() {
 	local - && set -e
 
-	cp ../$SCRIPTNAME $SHUNIT_TMPDIR/
+	cp "../$SCRIPTNAME" "$SHUNIT_TMPDIR/"
 	if [ -d "$SHUNIT_TMPDIR/lib" ]; then
 		# this happens if DELETE_SANDBOX is 'no'
 		rm -rf "$SHUNIT_TMPDIR/lib.prior"
 		mv "$SHUNIT_TMPDIR/lib" "$SHUNIT_TMPDIR/lib.prior"
 	fi
-	mkdir $SHUNIT_TMPDIR/lib
-	cp ../lib/* $SHUNIT_TMPDIR/lib/
+	mkdir "$SHUNIT_TMPDIR/lib"
+	cp ../lib/* "$SHUNIT_TMPDIR/lib/"
 
 	if fn_exists "localSetUp" ; then
 		localSetUp
 	fi
 
 	INITDIR=`pwd`
-	cd $SHUNIT_TMPDIR
+	cd "$SHUNIT_TMPDIR"
 
 	neuterPaths "$SHUNIT_TMPDIR"
 }
@@ -46,9 +46,9 @@ tearDown() {
 
 	cleanupSandboxes
 
-	cd $INITDIR
+	cd "$INITDIR"
 	if [ "no" != "$DELETE_SANDBOX" ]; then 
-		rm -rf $SHUNIT_TMPDIR/*
+		rm -rf "$SHUNIT_TMPDIR"/*
 	fi
 }
 
@@ -57,14 +57,16 @@ _runScript() {
 		TO_RUN="$1"
 		shift
 
-		# a nasty hack, necessary because we are 'source'ing rather than calling
+		# a hack, necessary because we are 'source'ing rather than calling
 		BASH_SOURCE="`pwd`/$TO_RUN"
 
+		# have to 'source' the script to be able to mock methods
+		# (but this makes trap handling exceedingly tricky)
 		. "$TO_RUN" "$@"
-
-		unset BASH_SOURCE
 	) >$OUT 2>$ERR
 	RTRN=$?
+
+	# convenience for our callers
 	cat "$OUT"
 }
 
@@ -164,6 +166,7 @@ switchToChroot() {
 			trap 'handle_trap INT 2' 2
 			trap 'handle_trap TERM 15' 15
 		fi
+
 		return
 	fi
 
@@ -284,9 +287,7 @@ cleanupSandboxes() {
 	GREPSTR="on $SHUNIT_TMPDIR.\+/usr/bin type null"
 	for c in 1 2 3 4 5 ; do # 'sandbox umount' doesn't return an appropriate exit code, so limit the number of attempts manually
 		MOUNTED="$(mount)"
-		echo "MOUNTED: $MOUNTED"
 		SANDBOXES="$(echo "$MOUNTED" | grep "$GREPSTR")" || SANDBOXES=""
-		echo "SANDBOXES: $SANDBOXES"
 		if [ -n "$SANDBOXES" ]; then
 			if [ 5 -eq $c ]; then
 				echo >&2 "We've tried 5 times to clean up sandbox mounts, and there are still some left:"

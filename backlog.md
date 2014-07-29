@@ -157,6 +157,7 @@
     - ignore errors
 * Option and command-arg to skip log reporting
     - e.g. if you have other monitoring techniques
+* Documentation
 
 ## Later Backlog
 * Make a README.md

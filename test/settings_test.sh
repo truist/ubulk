@@ -208,6 +208,8 @@ testMkSandbox() {
 testSandboxDir() {
 	checkDefaultsFile "SANDBOXDIR" "/usr/sandbox" "/usr/sandboxers"
 
+	MKSANDBOX='mkSandboxCreateSandbox'
+
 	TEST_SANDBOX_DIR="$SHUNIT_TMPDIR/tmp/sandbox1"
 	assertTrue 'sandbox does not exist yet' "[ ! -r '$TEST_SANDBOX_DIR/sandbox' ]"
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
@@ -216,7 +218,6 @@ testSandboxDir() {
 	checkResults 0 "script will make a sandbox anywhere!" \
 		"Mounting sandbox" "script ran mksandbox step" \
 		"" "mksandbox never complains!"
-	assertTrue 'sandbox was created' "[ -r '$TEST_SANDBOX_DIR/sandbox' ]"
 	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
 
 	TEST_SANDBOX_DIR="$SHUNIT_TMPDIR/tmp/sandbox2"
@@ -226,7 +227,14 @@ testSandboxDir() {
 	checkResults 0 "script will make a sandbox anywhere!" \
 		"Mounting sandbox" "script ran mksandbox step" \
 		"" "mksandbox never complains!"
-	assertTrue 'sandbox was created' "[ -r '$TEST_SANDBOX_DIR/sandbox' ]"
+}
+mkSandboxCreateSandbox() {
+	mksandbox "$@"
+	RTRN=$?
+
+	assertTrue "sandbox exists" "[ -f "$TEST_SANDBOX_DIR/sandbox" ]"
+
+	return $RTRN
 }
 
 testDoSandbox() {

@@ -5,9 +5,8 @@ cd `dirname $0` && . ./common.sh
 FOUNDIT="foundit!"
 
 localSetUp() {
-
 	# mock defaults.conf,  which (for now) is the first thing loaded
-	cat <<- EOF > $SHUNIT_TMPDIR/$DEFAULTSCONF
+	cat <<- EOF > "$SHUNIT_TMPDIR/$DEFAULTSCONF"
 		echo "$FOUNDIT"
 		exit 0
 EOF
