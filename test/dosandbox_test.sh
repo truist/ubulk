@@ -131,16 +131,6 @@ getSubshellPid() {
 	SUBSHELL_PID=$(sh -c 'ps -p $$ -o ppid=')
 }
 
-# XXX
-
-# - can't use relative path for SANDBOXDIR
-# - sandbox is created
-# - in specified place
-# - with specified args (including /var/spool)
-# automatically torn down
-# warning for out of date mk.conf and/or pkglist
-
-
 #-------------------------------------------------------------------------
 
 runScript() {

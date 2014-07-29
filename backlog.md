@@ -25,15 +25,15 @@
 * Make some sort of automated test suite
     - at least covering the options/settings, and output
     - maybe in a chroot?
-
-## Build Backlog
-
 * Create the sandbox
     - config location (/usr/sandbox)
     - config mksandbox args (--without-x)
     - mksandbox --rwdirs=/var/spool
     - after running pkg_chk
     - install traps/handlers to tear down the sandbox no matter how the build ends
+
+## Build Backlog
+
 * Option and command-arg to ignore/assume sandbox state
     - i.e. if you just want to leave the prior sandbox up
     - if set, warn if system /etc/mk.conf is newer than sandbox /etc/mk.conf
