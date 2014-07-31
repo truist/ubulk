@@ -10,6 +10,7 @@
         - command-arg to override default config location (/etc/ubulk.conf)
     - git-only
     - die on error
+* Command-arg to get command-arg help
 * Log results and be ready to be run from cron
     - config log file (/var/log/ubulk-build.log)
     - summary to stdout / details to log file
@@ -37,13 +38,6 @@
 
 ## Build Backlog
 
-* Install mksandbox if it's missing
-    - use an isolated build and install location
-    - follow pattern from installing pbulk
-    - should work even if the rest of pkgsrc is messy
-    - workdirs should be totally isolated
-    - ideally don't rebuild dependencies that don't need it
-    - don't create a package (explicitly; it's ok if the system mk.conf triggers it)
 * Chroot and prep for pbulk
     - after sandbox setup
     - run a script once inside
@@ -99,16 +93,12 @@
         - but still exit with the right code
     - figure out what junk is left behind and delete it
         - maybe wait until sandbox is unmounted?
-* Get the tests passing on a bare system
-    - i.e. uninstall pkg_chk and mksandbox, etc.
-* Get the tests passing on a non-root OSX pkgsrc
 * Option and command-arg to retry / continue / do a quick build
     - auto-set all the 'skip' options
     - do a manual 'scan' and 'build'
         - or use one of the other wrapper scripts?
 * Option and command-arg to set nice level
     - default 10
-* Command-arg to get command-arg help
 
 ## Install Backlog
 * Formal script that can install chosen packages
@@ -126,8 +116,6 @@
     - after checking that package files all match
     - delete everything installed in the system
     - on error, die with comprehensive error message
-* Option and command-arg to skip deletion (and just do install)
-    - e.g. if you had a prior delete fail, and manually finished it
 * Check if expected packages are actually installed
     - i.e. maybe they reported "success" but aren't really there
     - at the very end of the script (even after later stories)
@@ -151,16 +139,18 @@
     - config option to continue or stop after failed start (continue)
     - report missing rc.d scripts
     - config option to continue or stop after missing script (continue)
+* Option and command-arg to skip deletion (and just do install)
+    - e.g. if you had a prior delete fail, and manually finished it
 * Show log output during startup
     - start recording output before starting services
     - report output after services started
     - ignore errors
 * Option and command-arg to skip log reporting
     - e.g. if you have other monitoring techniques
-* Documentation
 
 ## Later Backlog
 * Make a README.md
+* Documentation (man page?)
 * Have it figure out which packages have been deleted since last build and pipe their uninstall output to the user (so they can see anything that needs to be cleaned up)
 * Log all the INSTALL and UNINSTALL messages somewhere
 * Do an install in the sandbox and diff that against the prod install, and report to the user (as part of the build)
@@ -170,5 +160,16 @@
 * Turn this whole thing into a pkgsrc package :)
     - version number
     - releases
-* Also see http://mail-index.netbsd.org/pkgsrc-users/2013/11/09/msg018881.html (and responses)
+
+## Things I should have known better than to prioritize
+* Install mksandbox if it's missing
+    - use an isolated build and install location
+    - follow pattern from installing pbulk
+    - should work even if the rest of pkgsrc is messy
+    - workdirs should be totally isolated
+    - ideally don't rebuild dependencies that don't need it
+    - don't create a package (explicitly; it's ok if the system mk.conf triggers it)
+* Get the tests passing on a bare system
+    - i.e. uninstall pkg_chk and mksandbox, etc.
+* Get the tests passing on a non-root OSX pkgsrc
 
