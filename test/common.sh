@@ -52,6 +52,9 @@ tearDown() {
 	fi
 }
 
+runScript() {
+	_runScript "./$SCRIPTNAME" "$@" >/dev/null
+}
 _runScript() {
 	(
 		TO_RUN="$1"

@@ -296,10 +296,6 @@ testMkSandboxArgs() {
 	# command-arg overrides setting
 #-------------------------------------------------------------------------
 
-runScript() {
-	_runScript "./$SCRIPTNAME" "$@" >/dev/null
-}
-
 checkDefaultsFile() {
 	VAR=$1
 	E_VALUE=$2

@@ -41,8 +41,4 @@ testSadPkgChk() {
 
 #-------------------------------------------------------------------------
 
-runScript() {
-	_runScript "./$SCRIPTNAME" "$@" >/dev/null
-}
-
 . ./shunit2
