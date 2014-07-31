@@ -124,11 +124,50 @@ killerMkSandbox() {
 	# just in case we survive this far
 	return $RTRN
 }
-
 getSubshellPid() {
 	# XXX not POSIX, and a big hack, but it seem to be the best way
 	# other than using bash explicitly
 	SUBSHELL_PID=$(sh -c 'ps -p $$ -o ppid=')
+}
+
+testCheckMkConfDateIfNotDoingSandbox() {
+	REALMK="/etc/mk.conf"
+	FAKEMK="/tmp/fakemk.conf.$$"
+	touch "$FAKEMK"
+
+	mksandbox $MKSANDBOXARGS "$SANDBOXDIR" >/dev/null 2>&1
+	assertTrue "sandbox script succeeded" $?
+	assertTrue "sandbox is really there" "[ -f $SANDBOXDIR/sandbox ]"
+
+	DOSANDBOX='no'
+
+	MAKECONF="$REALMK"
+	runScript -s no
+	checkResults 0 "clean exit" \
+		"^Skipping sandbox" "sandbox step skipped" \
+		"" "no errors, with default mk.conf"
+
+	touch "$REALMK" # remember, we're already in a chroot
+	runScript -s no
+	checkResults 0 "clean exit" \
+		"^Skipping sandbox" "sandbox step skipped" \
+		"WARNING: $MAKECONF is newer than $SANDBOXDIR/$MAKECONF" \
+			"script warns if sandbox's settings are out of date"
+
+	touch "$SANDBOXDIR/$FAKEMK"
+	MAKECONF="$FAKEMK"
+	runScript -s no
+	checkResults 0 "clean exit" \
+		"^Skipping sandbox" "sandbox step skipped" \
+		"" "no warnings, even with alternate mk.conf path"
+
+	sleep 1
+	touch "$FAKEMK"
+	runScript -s no
+	checkResults 0 "clean exit" \
+		"^Skipping sandbox" "sandbox step skipped" \
+		"WARNING: $MAKECONF is newer than $SANDBOXDIR/$MAKECONF" \
+			"script uses MAKECONF correctly"
 }
 
 #-------------------------------------------------------------------------

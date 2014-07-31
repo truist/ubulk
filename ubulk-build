@@ -1,5 +1,7 @@
 #!/bin/sh
 
+#-------------------------------------------------------------------------
+### ARG HANDLING ###
 usage() {
 	EXITCODE=$1
 	cat << EOF >&2
@@ -101,10 +103,11 @@ LOGPATH=${BUILDLOG:?} . "$LIB_DIR/util.sh"
 # to the console
 
 
-#-------------------------------------------------------------------------
+#=========================================================================
 ### START DOING ACTUAL WORK ###
 
-# update pkgsrc
+#-------------------------------------------------------------------------
+### UPDATE PKGSRC ###
 if [ "yes" = "$DOPKGSRC" ]; then
 	console "Updating pkgsrc ($PKGSRC)"
 	# in a subshell, to preserve pwd
@@ -113,7 +116,8 @@ else
 	console "Skipping pkgsrc update"
 fi
 
-# run pkg_chk
+#-------------------------------------------------------------------------
+### RUN PKG_CHK ###
 if [ "yes" = "$DOPKGCHK" ]; then
 	console "Checking for missing, out-of-date, or extra packages"
 	if command -v $PKGCHK >/dev/null 2>&1 ; then
@@ -131,6 +135,8 @@ else
 	console "Skipping $PKGCHK"
 fi
 
+#-------------------------------------------------------------------------
+### BUILD AND MOUNT (AND UNMOUNT) THE SANDBOX ###
 trap_cleanup() {
 	console
 	console "---------------------"
@@ -167,9 +173,15 @@ if [ "yes" = "$DOSANDBOX" ]; then
 	fi
 else
 	console "Skipping sandbox creation"
+	: ${MAKECONF:=/etc/mk.conf}
+	if [ "$MAKECONF" -nt "$SANDBOXDIR/$MAKECONF" ]; then
+		console_err "WARNING: $MAKECONF is newer than $SANDBOXDIR/$MAKECONF"
+	fi
 fi
 
 
+#-------------------------------------------------------------------------
+### DONE ###
 console
 console "Done!"
 

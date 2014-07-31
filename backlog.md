@@ -31,12 +31,12 @@
     - mksandbox --rwdirs=/var/spool
     - after running pkg_chk
     - install traps/handlers to tear down the sandbox no matter how the build ends
-
-## Build Backlog
-
 * Option and command-arg to ignore/assume sandbox state
     - i.e. if you just want to leave the prior sandbox up
     - if set, warn if system /etc/mk.conf is newer than sandbox /etc/mk.conf
+
+## Build Backlog
+
 * Install mksandbox if it's missing
     - use an isolated build and install location
     - follow pattern from installing pbulk
