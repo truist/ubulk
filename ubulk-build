@@ -187,15 +187,36 @@ fi
 
 console "Entering chroot ($SANDBOXDIR)"
 
+# give ourselves a workspace
 CHROOTWORKDIR="/tmp/chrootworkdir-$$"
 mkdir -p "$SANDBOXDIR/$CHROOTWORKDIR" || die $?
+
+# create a script to run in the chroot
 CHROOTSCRIPT="$CHROOTWORKDIR/inchroot.sh"
 echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT"
-CHROOTLOG="$CHROOTWORKDIR/inchroot.log"
-echo "LOGPATH=\"$CHROOTLOG\"" >> "$SANDBOXDIR$CHROOTSCRIPT"
+
+# start with util.sh
 cat "$LIB_DIR/util.sh" >> "$SANDBOXDIR$CHROOTSCRIPT"
 
+# install a simpler die() and initialize the output
+cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+	die() {
+		console_err "Error \$1 while \\"\$LASTCONSOLE\\""
+		exit \$1
+	}
+	console "Starting script in sandbox"
+EOF
+
+# prep for pbulk
+cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+	mkdir /bulklog || die \$?
+	mkdir /scratch || die \$?
+	useradd pbulk || die \$?
+	chown pbulk /scratch || die \$?
+EOF
+
 chmod +x "$SANDBOXDIR$CHROOTSCRIPT"
+
 $CHROOT "$SANDBOXDIR" "$CHROOTSCRIPT" || die $?
 
 

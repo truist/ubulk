@@ -2,30 +2,11 @@
 
 cd `dirname $0` && . ./common.sh
 
-localOneTimeSetUp() {
-	(
-		# in a subshell, so the settings are temporary
-		# remember, we are already in a chroot
-		# make the sandbox outside SHUNIT_TMPDIR, so common.sh leaves it alone
-		neuterPaths "/tmp"
-		"$MKSANDBOX" $MKSANDBOXARGS "$SANDBOXDIR" >/dev/null 2>&1
-		assertTrue "sandbox exists" "[ -f "$SANDBOXDIR/sandbox" ]"
-	)
-}
-
-localSetUp() {
-	SANDBOXDIR="/tmp/sandbox"
-}
-
-localOneTimeTearDown() {
-	"$SANDBOXDIR/sandbox" umount
-}
-
 #-------------------------------------------------------------------------
 
-testChrootDiesIfChrootBreaks() {
+testScriptDiesIfChrootBreaks() {
 	CHROOT='chroot_die'
-	runScript
+	runScript -s yes
 	checkResults 23 "script exited with test code" \
 		"^Entering chroot ($SANDBOXDIR)" "we tried to enter the chroot" \
 		"^Error 23 while \"Entering chroot" "the error is reported on console_err"
@@ -36,7 +17,7 @@ chroot_die() {
 
 testLogOutput() {
 	CHROOT='chroot_logging'
-	runScript
+	runScript -s yes
 	checkResults 0 "script exited cleanly" \
 		"^This is chroot console$" "'console' works in chroot" \
 		"^This is chroot console_err" "'console_err' works in chroot" \
@@ -63,24 +44,69 @@ TESTFILE="/tmp/canyouseeme.$$"
 testChrootIsMade() {
 	touch "$TESTFILE"
 	CHROOT='chroot_ismade'
-#	runScript -s
-#	checkResults 0 "script exited cleanly" \
-#		"^In chroot; file visible: 1" "script in chroot can't see TESTFILE" \
-#		"" "nothing on stderr"
+	runScript -s yes
+	checkResults 0 "script exited cleanly" \
+		"^In chroot; file visible: no" "script in chroot can't see TESTFILE" \
+		"" "nothing on stderr"
 }
 chroot_ismade() {
 	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
-		FILE_VISIBLE=\$([ -f $TESTFILE ])
-		echo \"In chroot; file visible: \$FILE_VISIBLE\"
+		if [ -f $TESTFILE ]; then
+			FILE_VISIBLE=yes
+		else
+			FILE_VISIBLE=no
+		fi
+		console "In chroot; file visible: \$FILE_VISIBLE"
 EOF
 
 	chroot "$@"
 }
 
 testChrootIsExitedNoMatterWhat() {
+	CHROOT='chroot_kill'
+	runScript -s yes
+	checkResults 137 "exit code indicates kill" \
+		"^We are in the chroot$" "stdout shows that we were in the chroot" \
+		"^Error 137 while \"Entering chroot" "death is reported gracefully" \
+		"Killed.*chroot" "Log indicates the error"
+}
+chroot_kill() {
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+		console "We are in the chroot"
+		trap - SIGKILL
+		kill -SIGKILL \$\$
+EOF
+
+	chroot "$@"
 }
 
 testDirsAndUsers() {
+	CHROOT='chroot_dirs'
+	runScript -s yes
+	checkResults 0 "script exited cleanly" \
+		"^In chroot; results: a b c d" "chroot has all the right dirs and users" \
+		"" "nothing on stderr"
+}
+chroot_dirs() {
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+		[ -d /bulklog ] && BULKLOG_FOUND=a
+		[ -d /scratch ] && SCRATCH_FOUND=b
+		id -u pbulk >/dev/null 2>&1 && PBULK_FOUND=c
+		[ -n "\$(find /scratch -user pbulk -print -prune -o -prune)" ] && SCRATCH_OWNER=d
+
+		console "In chroot; results: \$BULKLOG_FOUND \$SCRATCH_FOUND \$PBULK_FOUND \$SCRATCH_OWNER"
+EOF
+
+	chroot "$@"
+}
+
+testDirsAndUsersProblemCausesDeath() {
+	fail "implement this"
+}
+
+testEnvironmentIsPassedIn() {
+	fail "implement this"
+	fail "make paths and users configurable"
 }
 
 testDirsAndUsersNoSandbox() {
@@ -89,3 +115,4 @@ testDirsAndUsersNoSandbox() {
 #-------------------------------------------------------------------------
 
 . ./shunit2
+
