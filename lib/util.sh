@@ -1,27 +1,30 @@
 # redirect stdout and stderr to a file, but leave a way to send messages
 # to the 'real' stdout and stderr
-if [ -n "$LOGPATH" ]; then
-	echo -n >"$LOGPATH"
-	exec 3>&1 4>&2 1>"$LOGPATH" 2>&1
-	CONSOLEOUT=/dev/fd/3
-	CONSOLEERR=/dev/fd/4
-	echo >$CONSOLEOUT "Logging to $LOGPATH"
-else
-	echo >&2 "ERROR: must set LOGPATH before slurping util.sh"
-	exit 1
-fi
+setup_console_and_logging() {
+	LOGPATH="$1"
+	if [ -n "$LOGPATH" ]; then
+		echo -n >"$LOGPATH"
+		exec 3>&1 4>&2 1>"$LOGPATH" 2>&1
+		echo "Logging to $LOGPATH" >&3
+	else
+		echo >&2 "ERROR: must pass path to log file"
+		exit 1
+	fi
+}
 
 # handy method for printing stuff to the user; works in concert with die()
 LASTCONSOLE=""
 LASTPOS=0
 console() {
-	echo "$@" | tee $CONSOLEOUT
+	echo "$@" >&3
+	echo "$@"
 	LASTCONSOLE="$@"
 	LASTPOS=$(($(ls -nl "$LOGPATH" | awk '{print $5}') + 1))
 }
 
 console_err() {
-	echo "$@" | tee $CONSOLEERR
+	echo "$@" >&4
+	echo "$@"
 }
 
 : ${LOGLINESLIMIT:=10}
@@ -57,12 +60,12 @@ die() {
 
 	if [ 0 -lt $LOGLINESLIMIT ]; then
 		# only write to console (err), not to log
-		echo "$RECENTLOGS" | sed 's/^/ > /' >$CONSOLEERR
+		echo "$RECENTLOGS" | sed 's/^/ > /' >&4
 	fi
 
 	# only write to console (err), not to log
-	echo > $CONSOLEERR
-	echo "See $LOGPATH for details" >$CONSOLEERR
+	echo >&4
+	echo "See $LOGPATH for details" >&4
 
 	exit ${exitcode}
 }

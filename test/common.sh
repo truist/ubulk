@@ -19,6 +19,12 @@ oneTimeSetUp() {
 	fi
 }
 
+oneTimeTearDown() {
+	if fn_exists "localOneTimeTearDown" ; then
+		localOneTimeTearDown
+	fi
+}
+
 setUp() {
 	local - && set -e
 
@@ -31,6 +37,8 @@ setUp() {
 	mkdir "$SHUNIT_TMPDIR/lib"
 	cp ../lib/* "$SHUNIT_TMPDIR/lib/"
 
+	neuterPaths "$SHUNIT_TMPDIR"
+
 	if fn_exists "localSetUp" ; then
 		localSetUp
 	fi
@@ -38,7 +46,7 @@ setUp() {
 	INITDIR=`pwd`
 	cd "$SHUNIT_TMPDIR"
 
-	neuterPaths "$SHUNIT_TMPDIR"
+	checkNeuters
 }
 
 tearDown() {
@@ -93,19 +101,19 @@ checkResults() {
 	if [ "" = "$E_OUT" ]; then
 		assertNull "$OUT_MSG" "$(cat $OUT)" || cat $OUT
 	else
-		echo "$(cat $OUT)" | grep "$E_OUT" >/dev/null 2>&1
+		cat "$OUT" | grep "$E_OUT" >/dev/null 2>&1
 		assertTrue "$OUT_MSG" $? || cat $OUT
 	fi
 
 	if [ "" = "$E_ERR" ]; then
 		assertNull "$ERR_MSG" "$(cat $ERR)" || cat $ERR
 	else
-		echo "$(cat $ERR)" | grep "$E_ERR" >/dev/null 2>&1
+		cat "$ERR" | grep "$E_ERR" >/dev/null 2>&1
 		assertTrue "$ERR_MSG" $? || cat $ERR
 	fi
 
 	if [ "" != "$E_LOG" ]; then
-		echo "$(cat "$BUILDLOG")" | grep "$E_LOG" >/dev/null 2>&1
+		cat "$BUILDLOG" | grep "$E_LOG" >/dev/null 2>&1
 		assertTrue "$LOG_MSG" $? || cat "$BUILDLOG"
 	fi
 }
@@ -132,8 +140,10 @@ neuterPaths() {
 	PKGCHK=pkg_chk
 	MKSANDBOX=mksandbox
 	MKSANDBOXARGS="--without-x --rwdirs=/var/spool"
+	CHROOT=chroot
+}
 
-	# check that we got all the variables
+checkNeuters() {
 	TMPSCRIPT="./.tmpscript"
 	cat <<- EOF >$TMPSCRIPT
 		#!/bin/sh

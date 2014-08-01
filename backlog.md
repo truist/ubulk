@@ -94,6 +94,7 @@
     - figure out what junk is left behind and delete it
         - maybe wait until sandbox is unmounted?
 * Option and command-arg to retry / continue / do a quick build
+    - maybe this is the same as a 'skip the chroot' option?!?
     - auto-set all the 'skip' options
     - do a manual 'scan' and 'build'
         - or use one of the other wrapper scripts?

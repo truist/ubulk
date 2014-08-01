@@ -11,32 +11,33 @@ localOneTimeSetUp() {
 testLogingSetup() {
 	(
 		. $UTILSH
+		setup_console_and_logging
 	) >$OUT 2>$ERR
 	RTRN=$?
-	checkResults 1 "if we don't set LOGPATH, we die" \
+	checkResults 1 "if we don't pass an arg, we die" \
 		"" "nothing on stdout" \
-		"must set LOGPATH" "we're told what the problem is"
+		"must pass path to log file" "we're told what the problem is"
 
 	(
-		LOGPATH="$LOG"
 		. $UTILSH
+		setup_console_and_logging "$LOG"
 	) >$OUT 2>$ERR
 	RTRN=$?
-	checkResults 0 "when we set LOGPATH, everything is happy" \
+	checkResults 0 "when we pass log path, everything is happy" \
 		"^Logging to $LOG" "stdout tells us where we're logging" \
 		"" "nothing on stderr"
 }
 
 testOutputDestinationsAndLineOrdering() {
 	(
-		LOGPATH="$LOG"
 		. $UTILSH
+		setup_console_and_logging "$LOG"
 		echo "1: stdout goes to log"
 		echo >&2 "2: stderr goes to log"
 		console "3: console goes to 'real' stdout and to log"
 		console_err "4: console err goes to 'real' stderr and to log"
-		echo "5: CONSOLEOUT goes to 'real' stdout and not log" > $CONSOLEOUT
-		echo "6: CONSOLEERR goes to 'real' stderr and not log" > $CONSOLEERR
+		echo "5: fd3 goes to 'real' stdout and not log" >&3
+		echo "6: fd4 goes to 'real' stderr and not log" >&4
 	) >$OUT 2>$ERR
 	RTRN=$?
 
@@ -54,23 +55,23 @@ EOF
 	E_OUT="$(cat <<- EOF
 		Logging to $LOG
 		3: console goes to 'real' stdout and to log
-		5: CONSOLEOUT goes to 'real' stdout and not log
+		5: fd3 goes to 'real' stdout and not log
 EOF
 	)"
-	checkOut "stdout got console, CONSOLEOUT" "$E_OUT"
+	checkOut "stdout got console, fd3" "$E_OUT"
 
 	E_ERR="$(cat <<- EOF
 		4: console err goes to 'real' stderr and to log
-		6: CONSOLEERR goes to 'real' stderr and not log
+		6: fd4 goes to 'real' stderr and not log
 EOF
 	)"
-	checkErr "stderr got console_err, CONSOLEERR" "$E_ERR"
+	checkErr "stderr got console_err, fd4" "$E_ERR"
 }
 
 testDieWorksWithNoConsoleCall() {
 	(
-		LOGPATH="$LOG"
 		. $UTILSH
+		setup_console_and_logging "$LOG"
 		die 23
 	) >$OUT 2>$ERR
 	RTRN=$?
@@ -92,8 +93,8 @@ EOF
 testDieAfterConsoleCall() {
 	START="Starting some process"
 	(
-		LOGPATH="$LOG"
 		. $UTILSH
+		setup_console_and_logging "$LOG"
 		console "$START"
 		die 23
 	) >$OUT 2>$ERR
@@ -128,16 +129,16 @@ EOF
 
 testLogLinesLimitBasics() {
 	(
-		LOGPATH="$LOG"
 		. $UTILSH
+		setup_console_and_logging "$LOG"
 		echo "$LOGLINESLIMIT"  # (to log file)
 	) >$OUT 2>$ERR
 	checkLog "default LOGLINESLIMIT is 10" "10"
 
 	(
-		LOGPATH="$LOG"
-		LOGLINESLIMIT=5
 		. $UTILSH
+		LOGLINESLIMIT=5
+		setup_console_and_logging "$LOG"
 		echo "$LOGLINESLIMIT"  # (to log file)
 	) >$OUT 2>$ERR
 	checkLog "can override LOGLINESLIMIT" "5"
@@ -146,8 +147,8 @@ testLogLinesLimitBasics() {
 testDieLoggingWithLittleLogging() {
 	START="Starting some process"
 	(
-		LOGPATH="$LOG"
 		. $UTILSH
+		setup_console_and_logging "$LOG"
 		console "$START"
 		echo one
 		echo two
@@ -187,64 +188,9 @@ EOF
 testDieLoggingWithLotsOfLogging() {
 	START="Starting some process"
 	(
-		LOGPATH="$LOG"
-		LOGLINESLIMIT=2   # assume this works
 		. $UTILSH
-		console "$START"
-		echo one
-		echo two
-		echo three
-		echo four
-		echo five
-		echo six
-		echo seven
-		die 23
-	) >$OUT 2>$ERR
-	RTRN=$?
-
-	assertEquals "we exited as expected" 23 $RTRN
-
-	E_OUT="$(cat <<- EOF
-		Logging to $LOG
-		$START
-EOF
-	)"
-	checkOut "stdout shows what we expect" "$E_OUT"
-
-	E_ERR="$(cat <<- EOF
-		Error 23 while "$START"
-		 > one
-		 > two
-		 > [...snip...]
-		 > six
-		 > seven
-
-		See $LOG for details
-EOF
-	)"
-	checkErr "stderr shows the error, the prior console message, and a subset of the following logs" "$E_ERR"
-
-	E_LOG="$(cat <<- EOF
-		$START
-		one
-		two
-		three
-		four
-		five
-		six
-		seven
-		Error 23 while "$START"
-EOF
-	)"
-	checkLog "log shows the start, the logs, and the error, but not the rest" "$E_LOG"
-}
-
-testDieLoggingWithZeroLogLinesLimit() {
-	START="Starting some process"
-	(
-		LOGPATH="$LOG"
 		LOGLINESLIMIT=0
-		. $UTILSH
+		setup_console_and_logging "$LOG"
 		console "$START"
 		echo one
 		echo two

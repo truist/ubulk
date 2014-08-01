@@ -98,9 +98,12 @@ fi
 eval "$ARG_STASH"
 
 # load the utility functions (now that we know where the log should go)
-LOGPATH=${BUILDLOG:?} . "$LIB_DIR/util.sh"
-# from here forward we have to use 'console' and 'die' to get output
-# to the console
+. "$LIB_DIR/util.sh"
+
+# install our special stdout / logging stuff
+setup_console_and_logging "${BUILDLOG:?}"
+# from here forward we have to use 'console' and 'console_err' and 'die'
+# to get output to the console
 
 
 #=========================================================================
@@ -178,6 +181,22 @@ else
 		console_err "WARNING: $MAKECONF is newer than $SANDBOXDIR/$MAKECONF"
 	fi
 fi
+
+#-------------------------------------------------------------------------
+### ENTER AND CONFIG THE CHROOT ###
+
+console "Entering chroot ($SANDBOXDIR)"
+
+CHROOTWORKDIR="/tmp/chrootworkdir-$$"
+mkdir -p "$SANDBOXDIR/$CHROOTWORKDIR" || die $?
+CHROOTSCRIPT="$CHROOTWORKDIR/inchroot.sh"
+echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT"
+CHROOTLOG="$CHROOTWORKDIR/inchroot.log"
+echo "LOGPATH=\"$CHROOTLOG\"" >> "$SANDBOXDIR$CHROOTSCRIPT"
+cat "$LIB_DIR/util.sh" >> "$SANDBOXDIR$CHROOTSCRIPT"
+
+chmod +x "$SANDBOXDIR$CHROOTSCRIPT"
+$CHROOT "$SANDBOXDIR" "$CHROOTSCRIPT" || die $?
 
 
 #-------------------------------------------------------------------------

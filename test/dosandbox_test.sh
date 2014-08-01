@@ -4,6 +4,10 @@ cd `dirname $0` && . ./common.sh
 
 #-------------------------------------------------------------------------
 
+testDiesIfFails() {
+	fail "implement this"
+}
+
 testCreateSandbox() {
 	SANDBOXDIR="./sandbox"
 	runScript -s yes
