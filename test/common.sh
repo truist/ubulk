@@ -144,8 +144,8 @@ neuterPaths() {
 	CHROOT=chroot
 }
 
-checkNeuters() {
-	TMPSCRIPT="./.tmpscript"
+loadDefaultVarList() {
+	TMPSCRIPT="/tmp/tmpscript.$$"
 	cat <<- EOF >$TMPSCRIPT
 		#!/bin/sh
 		BEFORE=\`set\`
@@ -155,9 +155,13 @@ checkNeuters() {
 	EOF
 	chmod +x $TMPSCRIPT
 	DEFAULTVARS=$(
-		env -i $TMPSCRIPT | sed -r 's/^(.+)=.*$/\1/'
+		env -i $TMPSCRIPT | sed -r 's/^([^=]+)=.*$/\1/'
 	)
 	rm $TMPSCRIPT
+}
+
+checkNeuters() {
+	loadDefaultVarList
 	echo "$DEFAULTVARS" | while read LINE ; do
 		if [ -z "$(eval "echo \"\$$LINE\"")" ]; then
 			echo >&2 "$DEFAULTSCONF sets $LINE but this test doesn't override it"

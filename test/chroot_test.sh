@@ -134,8 +134,48 @@ chroot_prior_sandbox() {
 	return $RTRN
 }
 
-testEnvironmentIsPassedIn() {
-	fail "implement this"
+INCLUDED_VARS="MAKECONF
+PKGLIST
+PKGSRC"
+EXCLUDED_VARS="BUILDLOG
+CHROOT
+CONFIG
+DOCHROOT
+DOPKGCHK
+DOPKGSRC
+DOSANDBOX
+MKSANDBOX
+MKSANDBOXARGS
+PKGCHK
+SANDBOXDIR"
+testScriptVarsArePassedIn() {
+	CHROOT='chroot_env'
+	runScript -s yes -c yes
+	checkResults 0 "script ran cleanly" \
+		"^Entering chroot" "we entered the chroot" \
+		"" "nothing on stderr" \
+		"^CHROOT SET:$" "the environment was reported to us"
+
+	loadDefaultVarList # see common.sh
+	echo "$DEFAULTVARS" | while read LINE ; do
+		if echo "$INCLUDED_VARS" | grep "$LINE" >/dev/null 2>&1 ; then
+			cat "$BUILDLOG" | grep "^$LINE=" >/dev/null 2>&1
+			assertTrue "var $LINE was present" $?
+		elif echo "$EXCLUDED_VARS" | grep "$LINE" >/dev/null 2>&1 ; then
+			cat "$BUILDLOG" | grep "^$LINE=" >/dev/null 2>&1
+			assertFalse "var $LINE was not present" $?
+		else
+			fail "you need to add $LINE to INCLUDED_VARS or EXCLUDED_VARS"
+		fi
+	done
+}
+chroot_env() {
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+		echo "CHROOT SET:"
+		set
+EOF
+
+	chroot "$@"
 }
 
 testPathsAndUsersAreConfigurable() {
