@@ -193,13 +193,13 @@ mkdir -p "$SANDBOXDIR/$CHROOTWORKDIR" || die $?
 
 # create a script to run in the chroot
 CHROOTSCRIPT="$CHROOTWORKDIR/inchroot.sh"
-echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT"
+echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
 # start with util.sh
-cat "$LIB_DIR/util.sh" >> "$SANDBOXDIR$CHROOTSCRIPT"
+cat "$LIB_DIR/util.sh" >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
 # install a simpler die() and initialize the output
-cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 	die() {
 		console_err "Error \$1 while \\"\$LASTCONSOLE\\""
 		exit \$1
@@ -209,13 +209,13 @@ EOF
 
 # prep for pbulk
 cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
-	mkdir /bulklog || die \$?
-	mkdir /scratch || die \$?
-	useradd pbulk || die \$?
+	mkdir -p /bulklog || die \$?
+	mkdir -p /scratch || die \$?
+	id -u pbulk >/dev/null 2>&1 || useradd pbulk || die \$?
 	chown pbulk /scratch || die \$?
 EOF
 
-chmod +x "$SANDBOXDIR$CHROOTSCRIPT"
+chmod +x "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
 $CHROOT "$SANDBOXDIR" "$CHROOTSCRIPT" || die $?
 

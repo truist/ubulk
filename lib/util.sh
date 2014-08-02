@@ -19,7 +19,9 @@ console() {
 	echo "$@" >&3
 	echo "$@"
 	LASTCONSOLE="$@"
-	LASTPOS=$(($(ls -nl "$LOGPATH" | awk '{print $5}') + 1))
+	if [ -n "$LOGPATH" ]; then
+		LASTPOS=$(($(ls -nl "$LOGPATH" | awk '{print $5}') + 1))
+	fi
 }
 
 console_err() {
@@ -52,20 +54,22 @@ die() {
 	local exitcode
 	exitcode=$1; shift
 
-	if [ 0 -lt $LOGLINESLIMIT ]; then
+	if [ -n "$LOGPATH" -a 0 -lt $LOGLINESLIMIT ]; then
 		RECENTLOGS=$(recent_logs)
 	fi
 
 	console_err "Error $exitcode while \"$LASTCONSOLE\""
 
-	if [ 0 -lt $LOGLINESLIMIT ]; then
+	if [ -n "$LOGPATH" -a 0 -lt $LOGLINESLIMIT ]; then
 		# only write to console (err), not to log
 		echo "$RECENTLOGS" | sed 's/^/ > /' >&4
 	fi
 
-	# only write to console (err), not to log
-	echo >&4
-	echo "See $LOGPATH for details" >&4
+	if [ -n "$LOGPATH" ]; then
+		# only write to console (err), not to log
+		echo >&4
+		echo "See $LOGPATH for details" >&4
+	fi
 
 	exit ${exitcode}
 }

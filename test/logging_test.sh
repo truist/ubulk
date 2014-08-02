@@ -225,6 +225,10 @@ EOF
 	checkLog "log shows the start, the logs, and the error, but not the rest" "$E_LOG"
 }
 
+testConsoleAndDieAsIfInChroot() {
+	fail "implement this"
+}
+
 #-------------------------------------------------------------------------
 
 checkOut() {

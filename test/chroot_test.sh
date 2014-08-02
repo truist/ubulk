@@ -62,7 +62,7 @@ EOF
 	chroot "$@"
 }
 
-testChrootIsExitedNoMatterWhat() {
+testChrootExitsNoMatterWhat() {
 	CHROOT='chroot_kill'
 	runScript -s yes
 	checkResults 137 "exit code indicates kill" \
@@ -100,16 +100,43 @@ EOF
 	chroot "$@"
 }
 
-testDirsAndUsersProblemCausesDeath() {
-	fail "implement this"
+testSandboxFromPriorRun() {
+	CHROOT='chroot_prior_sandbox'
+	runScript -s yes
+	checkResults 0 "script made it through second round cleanly" \
+		"^Combined results: yes yes" "got through both rounds" \
+		"" "nothing on stderr"
+}
+chroot_prior_sandbox() {
+	# we're sneaky - we just call chroot_dirs twice; once to create the dirs
+	# and users for us, and again to test that it can handle that.
+	chroot_dirs "$@"
+	RTRN=$?
+	if cat $OUT | grep "a b c d" >/dev/null 2>&1 ; then
+		ALL_YES1=yes
+		echo > $OUT
+	else
+		cat $OUT
+		return $RTRN
+	fi
+
+	chroot_dirs "$@"
+	RTRN=$?
+	if cat $OUT | grep "a b c d" >/dev/null 2>&1 ; then
+		ALL_YES2=yes
+	else
+		cat $OUT
+		return $RTRN
+	fi
+
+	console "Combined results: $ALL_YES1 $ALL_YES2"
+
+	return $RTRN
 }
 
 testEnvironmentIsPassedIn() {
 	fail "implement this"
 	fail "make paths and users configurable"
-}
-
-testDirsAndUsersNoSandbox() {
 }
 
 #-------------------------------------------------------------------------
