@@ -74,25 +74,25 @@ testDoPkgChk() {
 
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
 	echo >> $DEFAULTSCONF && echo "DOPKGCHK=no" >> $DEFAULTSCONF
-	runScript -p no
+	runScript
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkg_chk" "script obeyed the hard-coded default" \
 		"" "nothing on stderr"
 	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
 
 	echo "DOPKGCHK=no" > ./testubulk.conf
-	runScript -C ./testubulk.conf -p no
+	runScript -C ./testubulk.conf
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkg_chk" "setting trumps hard-coded default" \
 		"" "nothing on stderr"
 
-	runScript -p no -c no
+	runScript -k no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkg_chk" "command-arg trumps hard-coded default" \
 		"" "nothing on stderr"
 
 	echo "DOPKGCHK=yes" > ./testubulk.conf
-	runScript -C ./testubulk.conf -p no -c no
+	runScript -C ./testubulk.conf -k no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkg_chk" "command-arg trumps config file" \
 		"" "nothing on stderr"
@@ -103,25 +103,25 @@ testDoPkgsrc() {
 
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
 	echo >> $DEFAULTSCONF &&  echo "DOPKGSRC=no" >> $DEFAULTSCONF
-	runScript -c no
+	runScript
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "script obeyed the hard-coded default" \
 		"" "nothing on stderr"
 	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
 
 	echo "DOPKGSRC=no" > ./testubulk.conf
-	runScript -C ./testubulk.conf -c no
+	runScript -C ./testubulk.conf
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "setting trumps hard-coded default" \
 		"" "nothing on stderr"
 
-	runScript -c no -p no
+	runScript -p no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "command-arg trumps hard-coded default" \
 		"" "nothing on stderr"
 
 	echo "DOPKGSRC=yes" > ./testubulk.conf
-	runScript -C ./testubulk.conf -c no -p no
+	runScript -C ./testubulk.conf -p no
 	checkResults 0 "script exits cleanly" \
 		"^Skipping pkgsrc update" "command-arg trumps config file" \
 		"" "nothing on stderr"
@@ -150,14 +150,14 @@ testBuildLog() {
 
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
 	echo >> $DEFAULTSCONF &&  echo "BUILDLOG=./mybuildlog" >> $DEFAULTSCONF
-	runScript -c no -p no
+	runScript
 	checkResults 0 "script finishes cleanly" \
 		"^Logging to ./mybuildlog" "script obeyed the hard-coded default" \
 		"" "stderr is empty"
 	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
 
 	echo "BUILDLOG=./myotherbuildlog" > ./testubulk.conf
-	runScript -c no -p no -C ./testubulk.conf
+	runScript -C ./testubulk.conf
 	checkResults 0 "script finishes cleanly" \
 		"^Logging to ./myotherbuildlog" "script obeyed the config-file value" \
 		"" "stderr is empty"
@@ -168,14 +168,14 @@ testPkgList() {
 
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
 	echo >> $DEFAULTSCONF && echo "PKGLIST=/tmp/myfakepkglist" >> $DEFAULTSCONF
-	runScript -c yes
+	runScript -k yes
 	checkResults 1 "script dies as expected" \
 		"Checking for missing" "script ran pkg_chk" \
 		"Unable to read.*/tmp/myfakepkglist" "script complains about bad pkglist"
 	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
 
 	echo "PKGLIST=/tmp/myotherfakepkglist" > ./testubulk.conf
-	runScript -C ./testubulk.conf -c yes
+	runScript -C ./testubulk.conf -k yes
 	checkResults 1 "script dies as expected" \
 		"Checking for missing" "script ran pkg_chk" \
 		"Unable to read.*/tmp/myotherfakepkglist" "script complains about bad pkglist"
@@ -185,7 +185,7 @@ testPkgChk() {
 	checkDefaultsFile "PKGCHK" "pkg_chk" "package_check"
 
 	PKGCHK=package_check_fake
-	runScript -c yes
+	runScript -k yes
 	checkResults 0 "script finishes even with missing pkg_chk" \
 		"Can't find package_check_fake" "script looked for fake pkg_chk" \
 		"" "nothing on stderr"
@@ -283,6 +283,35 @@ testMkSandboxArgs() {
 	checkResults 1 "illegal args means mksandbox failure" \
 		"Mounting sandbox" "script ran mksandbox step" \
 		"usage: mksandbox" "mksandbox complaints about invalid args"
+}
+
+testDoChroot() {
+	checkDefaultsFile "DOCHROOT" "yes" "no"
+
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF &&  echo "DOCHROOT=no" >> $DEFAULTSCONF
+	runScript
+	checkResults 0 "script exits cleanly" \
+		"^WARNING: Not using chroot" "script obeyed the hard-coded default" \
+		"" "nothing on stderr"
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+
+	echo "DOCHROOT=no" > ./testubulk.conf
+	runScript -C ./testubulk.conf
+	checkResults 0 "script exits cleanly" \
+		"^WARNING: Not using chroot" "setting trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	runScript -c no
+	checkResults 0 "script exits cleanly" \
+		"^WARNING: Not using chroot" "command-arg trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	echo "DOCHROOT=yes" > ./testubulk.conf
+	runScript -C ./testubulk.conf -c no
+	checkResults 0 "script exits cleanly" \
+		"^WARNING: Not using chroot" "command-arg trumps config file" \
+		"" "nothing on stderr"
 }
 
 

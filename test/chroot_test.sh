@@ -139,6 +139,10 @@ testEnvironmentIsPassedIn() {
 	fail "make paths and users configurable"
 }
 
+testObeysDoSandbox() {
+	fail "implement this"
+}
+
 #-------------------------------------------------------------------------
 
 . ./shunit2

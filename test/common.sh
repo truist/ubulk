@@ -135,6 +135,7 @@ neuterPaths() {
 	DOPKGSRC=no
 	DOPKGCHK=no
 	DOSANDBOX=no
+	DOCHROOT=no
 
 	# odds-and-ends
 	PKGCHK=pkg_chk

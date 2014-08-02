@@ -161,8 +161,7 @@
 * Turn this whole thing into a pkgsrc package :)
     - version number
     - releases
-
-## Things I should have known better than to prioritize
+* Give user a way to pass additional env into the chroot
 * Install mksandbox if it's missing
     - use an isolated build and install location
     - follow pattern from installing pbulk

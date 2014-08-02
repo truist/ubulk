@@ -5,14 +5,19 @@
 usage() {
 	EXITCODE=$1
 	cat << EOF >&2
-usage: ${0##*/} [-C /path/to/ubulk.conf]"
-                   [-c (yes|no)] [-p (yes|no)]"
-                   [-hv]"
-       -c (yes|no) Whether to run pkg_chk before building"
-       -h          This help"
-       -p (yes|no) Whether to update pkgsrc before building"
-       -s (yes|no) Whether to create and mount a sandbox before building"
-       -v          Turn on verbose mode"
+usage: ${0##*/} [<arg1> ...]
+
+args (all optional, listed in execution order):
+
+    ARGUMENT               VAR       DESCRIPTION
+    ---------------------- --------- --------------------------------------
+    -h                               This help
+    -v                               Verbose mode
+    -C /path/to/ubulk.conf CONFIG    Alternate path to ubulk.conf
+    -p (yes|no)            DOPKGSRC  Update pkgsrc
+    -k (yes|no)            DOPKGCHK  Run pkg_chk -q
+    -s (yes|no)            DOSANDBOX Create, mount, & unmount a sandbox dir
+    -c (yes|no)            DOCHROOT  Chroot (you want this!)
 EOF
 	exit ${1:-1}
 }
@@ -23,11 +28,12 @@ stashArg() {
 	ARG_STASH="$ARG_STASH $1=\"${OPTARG}\" ;"
 }
 
-while getopts C:c:hp:s:v opt; do
+while getopts C:c:hk:p:s:v opt; do
     case $opt in
 		C)  ARG_CONFIG="${OPTARG}" ;; # this one needs special handling
-		c)  stashArg "DOPKGCHK" ;;
+		c)  stashArg "DOCHROOT" ;;
 		h)  usage 0 ;;
+		k)  stashArg "DOPKGCHK" ;;
 		p)  stashArg "DOPKGSRC" ;;
 		s)  stashArg "DOSANDBOX" ;;
 		v)  set -x ;;
@@ -185,40 +191,43 @@ fi
 #-------------------------------------------------------------------------
 ### ENTER AND CONFIG THE CHROOT ###
 
-console "Entering chroot ($SANDBOXDIR)"
+if [ "yes" = "$DOCHROOT" ]; then
+	console "Entering chroot ($SANDBOXDIR)"
 
-# give ourselves a workspace
-CHROOTWORKDIR="/tmp/chrootworkdir-$$"
-mkdir -p "$SANDBOXDIR/$CHROOTWORKDIR" || die $?
+	# give ourselves a workspace
+	CHROOTWORKDIR="/tmp/chrootworkdir-$$"
+	mkdir -p "$SANDBOXDIR/$CHROOTWORKDIR" || die $?
 
-# create a script to run in the chroot
-CHROOTSCRIPT="$CHROOTWORKDIR/inchroot.sh"
-echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT" || die $?
+	# create a script to run in the chroot
+	CHROOTSCRIPT="$CHROOTWORKDIR/inchroot.sh"
+	echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
-# start with util.sh
-cat "$LIB_DIR/util.sh" >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
+	# start with util.sh
+	cat "$LIB_DIR/util.sh" >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
-# install a simpler die() and initialize the output
-cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
-	die() {
-		console_err "Error \$1 while \\"\$LASTCONSOLE\\""
-		exit \$1
-	}
-	console "Starting script in sandbox"
-EOF
+	# install a simpler die() and initialize the output
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
+		die() {
+			console_err "Error \$1 while \\"\$LASTCONSOLE\\""
+			exit \$1
+		}
+		console "Starting script in sandbox"
+	EOF
 
-# prep for pbulk
-cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
-	mkdir -p /bulklog || die \$?
-	mkdir -p /scratch || die \$?
-	id -u pbulk >/dev/null 2>&1 || useradd pbulk || die \$?
-	chown pbulk /scratch || die \$?
-EOF
+	# prep for pbulk
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+		mkdir -p /bulklog || die \$?
+		mkdir -p /scratch || die \$?
+		id -u pbulk >/dev/null 2>&1 || useradd pbulk || die \$?
+		chown pbulk /scratch || die \$?
+	EOF
 
-chmod +x "$SANDBOXDIR$CHROOTSCRIPT" || die $?
+	chmod +x "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
-$CHROOT "$SANDBOXDIR" "$CHROOTSCRIPT" || die $?
-
+	$CHROOT "$SANDBOXDIR" "$CHROOTSCRIPT" || die $?
+else
+	console "WARNING: Not using chroot"
+fi
 
 #-------------------------------------------------------------------------
 ### DONE ###
