@@ -226,7 +226,31 @@ EOF
 }
 
 testConsoleAndDieAsIfInChroot() {
-	fail "implement this"
+	MESSAGE="Call console without first setting up logging"
+	(
+		. $UTILSH
+
+		# inside a chroot, we will still have all the redirections that were
+		# setup outside the chroot, but we may not have the environment
+		# variables (i.e. LOGPATH). so to test that, we have to go ahead
+		# and set up the redirects, then clean up here and there, then unset
+		# LOGPATH, so it is basically the same
+		setup_console_and_logging "$LOG"
+		LOGPATH=
+		echo -n > $OUT
+
+		# ok, now we can do stuff
+		console "$MESSAGE"
+		die 23
+	) >$OUT 2>$ERR
+	RTRN=$?
+
+	assertEquals "we exited as expected" 23 $RTRN
+	checkOut "console works even without setup" "$MESSAGE"
+	checkLog "die works even without setup" \
+		"$(printf "$MESSAGE\nError 23 while \"$MESSAGE\"")"
+	checkErr "real stderr shows failure info even without setup" \
+		"Error 23 while \"$MESSAGE\""
 }
 
 #-------------------------------------------------------------------------
