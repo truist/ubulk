@@ -6,7 +6,7 @@ cd `dirname $0` && . ./common.sh
 
 testScriptDiesIfChrootBreaks() {
 	CHROOT='chroot_die'
-	runScript -s yes
+	runScript -s yes -c yes
 	checkResults 23 "script exited with test code" \
 		"^Entering chroot ($SANDBOXDIR)" "we tried to enter the chroot" \
 		"^Error 23 while \"Entering chroot" "the error is reported on console_err"
@@ -17,7 +17,7 @@ chroot_die() {
 
 testLogOutput() {
 	CHROOT='chroot_logging'
-	runScript -s yes
+	runScript -s yes -c yes
 	checkResults 0 "script exited cleanly" \
 		"^This is chroot console$" "'console' works in chroot" \
 		"^This is chroot console_err" "'console_err' works in chroot" \
@@ -44,7 +44,7 @@ TESTFILE="/tmp/canyouseeme.$$"
 testChrootIsMade() {
 	touch "$TESTFILE"
 	CHROOT='chroot_ismade'
-	runScript -s yes
+	runScript -s yes -c yes
 	checkResults 0 "script exited cleanly" \
 		"^In chroot; file visible: no" "script in chroot can't see TESTFILE" \
 		"" "nothing on stderr"
@@ -64,7 +64,7 @@ EOF
 
 testChrootExitsNoMatterWhat() {
 	CHROOT='chroot_kill'
-	runScript -s yes
+	runScript -s yes -c yes
 	checkResults 137 "exit code indicates kill" \
 		"^We are in the chroot$" "stdout shows that we were in the chroot" \
 		"^Error 137 while \"Entering chroot" "death is reported gracefully" \
@@ -82,7 +82,7 @@ EOF
 
 testDirsAndUsers() {
 	CHROOT='chroot_dirs'
-	runScript -s yes
+	runScript -s yes -c yes
 	checkResults 0 "script exited cleanly" \
 		"^In chroot; results: a b c d" "chroot has all the right dirs and users" \
 		"" "nothing on stderr"
@@ -102,7 +102,7 @@ EOF
 
 testSandboxFromPriorRun() {
 	CHROOT='chroot_prior_sandbox'
-	runScript -s yes
+	runScript -s yes -c yes
 	checkResults 0 "script made it through second round cleanly" \
 		"^Combined results: yes yes" "got through both rounds" \
 		"" "nothing on stderr"
@@ -136,7 +136,10 @@ chroot_prior_sandbox() {
 
 testEnvironmentIsPassedIn() {
 	fail "implement this"
-	fail "make paths and users configurable"
+}
+
+testPathsAndUsersAreConfigurable() {
+	fail "impelement this"
 }
 
 testObeysDoSandbox() {
