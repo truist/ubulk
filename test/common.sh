@@ -47,6 +47,14 @@ setUp() {
 	cd "$SHUNIT_TMPDIR"
 
 	checkNeuters
+
+	if [ -n "$TESTNAME" ]; then
+		if echo "${_shunit_test_}" | grep -v "$TESTNAME" >/dev/null 2>&1 ; then
+			echo -n "Skipping " # shunit2 is about to output the name for us
+			startSkipping
+			eval "${_shunit_test_}() { return 0; }"
+		fi
+	fi
 }
 
 tearDown() {
@@ -235,7 +243,7 @@ EOF
 	cat <<- EOF > "$CHROOT_DIR/$BOOTSTRAP"
 		#!/bin/sh
 		cd /$WORKDIR/$SCRIPT_PATH_PREFIX/
-		DELETE_SANDBOX=$DELETE_SANDBOX $0
+		DELETE_SANDBOX=$DELETE_SANDBOX TESTNAME=$TESTNAME $0
 		exit \$?
 EOF
 	$DO_SUDO chmod +x "$CHROOT_DIR/$BOOTSTRAP"
