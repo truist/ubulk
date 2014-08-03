@@ -314,6 +314,55 @@ testDoChroot() {
 		"" "nothing on stderr"
 }
 
+testExtraChrootArgs() {
+	checkDefaultsFile "EXTRACHROOTVARS" "MAKECONF" "MAKE_A_CONF"
+
+	CHROOT='chroot_env'
+	unset EXTRACHROOTVARS
+
+	TESTVAR1='hello'
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF && echo "EXTRACHROOTVARS='TESTVAR1'" >> $DEFAULTSCONF
+	runScript -s yes -c yes
+	checkResults 0 "script ran cleanly" \
+		"^Entering chroot" "we entered the chroot" \
+		"" "nothing on stderr" \
+		"^CHROOT SET:$" "the environment was reported to us"
+	cat "$BUILDLOG" | grep "^TESTVAR1=" >/dev/null 2>&1
+	assertTrue "config via environment succeeded" $?
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+
+	assertNull "var is not set here" "$EXTRACHROOTVARS"
+
+	echo "EXTRACHROOTVARS='TESTVAR1'" > ./testubulk.conf
+	runScript -C ./testubulk.conf -s yes -c yes
+	checkResults 0 "script ran cleanly" \
+		"^Entering chroot" "we entered the chroot" \
+		"" "nothing on stderr" \
+		"^CHROOT SET:$" "the environment was reported to us"
+	cat "$BUILDLOG" | grep "^TESTVAR1=" >/dev/null 2>&1
+	assertTrue "config via config file succeeded" $?
+
+	assertNull "var is not set here" "$EXTRACHROOTVARS"
+
+	echo "EXTRACHROOTVARS=" > ./testubulk.conf
+	runScript -C ./testubulk.conf -s yes -c yes
+	checkResults 0 "script ran cleanly" \
+		"^Entering chroot" "we entered the chroot" \
+		"" "nothing on stderr" \
+		"^CHROOT SET:$" "the environment was reported to us"
+	cat "$BUILDLOG" | grep "^TESTVAR1=" >/dev/null 2>&1
+	assertFalse "no extra vars in environment" $?
+}
+chroot_env() {
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+		echo "CHROOT SET:"
+		set
+EOF
+
+	chroot "$@"
+}
+
 
 	# source defaults.conf ourselves
 	# check for correct value

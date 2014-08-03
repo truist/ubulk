@@ -130,6 +130,7 @@ neuterPaths() {
 	BUILDLOG="$PATHROOT/ubulk-build.log"
 	PKGLIST="$PATHROOT/pkglist"
 	SANDBOXDIR="$PATHROOT/sandbox"
+	EXTRACHROOTVARS="MAKECONF"
 
 	# turn every build step off
 	DOPKGSRC=no

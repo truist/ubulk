@@ -134,8 +134,7 @@ chroot_prior_sandbox() {
 	return $RTRN
 }
 
-INCLUDED_VARS="MAKECONF
-PKGLIST
+INCLUDED_VARS=" PKGLIST
 PKGSRC"
 EXCLUDED_VARS="BUILDLOG
 CHROOT
@@ -144,6 +143,7 @@ DOCHROOT
 DOPKGCHK
 DOPKGSRC
 DOSANDBOX
+EXTRACHROOTVARS
 MKSANDBOX
 MKSANDBOXARGS
 PKGCHK
@@ -176,6 +176,30 @@ chroot_env() {
 EOF
 
 	chroot "$@"
+}
+
+testExtraVarsArePassedIn() {
+	CHROOT='chroot_env'
+	EXTRACHROOTVARS='TESTVAR1 TESTVAR2 TESTVAR3'
+	TESTVAR1='this one is set'
+	TESTVAR2=""
+	unset TESTVAR3
+	assertTrue "TESTVAR3 is unset" "[ -z ${TESTVAR3+x} ]"
+
+	runScript -s yes -c yes
+	checkResults 0 "script ran cleanly" \
+		"^Entering chroot" "we entered the chroot" \
+		"" "nothing on stderr" \
+		"^CHROOT SET:$" "the environment was reported to us"
+
+	cat "$BUILDLOG" | grep "^TESTVAR1='this one is set'$" >/dev/null 2>&1
+	assertTrue "a set var was passed in" $?
+
+	cat "$BUILDLOG" | grep "^TESTVAR2=$" >/dev/null 2>&1
+	assertTrue "a set-to-empty var was passed in" $?
+
+	cat "$BUILDLOG" | grep "^TESTVAR3=" > /dev/null 2>&1
+	assertFalse "an unset var was not passed in" $?
 }
 
 testPathsAndUsersAreConfigurable() {

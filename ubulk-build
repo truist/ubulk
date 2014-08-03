@@ -202,6 +202,16 @@ if [ "yes" = "$DOCHROOT" ]; then
 	CHROOTSCRIPT="$CHROOTWORKDIR/inchroot.sh"
 	echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
+	for CHROOT_VAR in PKGLIST PKGSRC $EXTRACHROOTVARS ; do
+		if [ ! -z "$(eval "echo \${${CHROOT_VAR}+x}")" ]; then
+			eval "CHROOT_VAR_VALUE=\"\${${CHROOT_VAR}}\""
+			echo "Extra chroot var $CHROOT_VAR is set: '$CHROOT_VAR_VALUE'"
+			echo "$CHROOT_VAR='$CHROOT_VAR_VALUE'" >> "$SANDBOXDIR$CHROOTSCRIPT"
+		else
+			echo "Extra chroot var $CHROOT_VAR is unset, and won't be passed in" >&2
+		fi
+	done
+
 	# start with util.sh
 	cat "$LIB_DIR/util.sh" >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
@@ -224,9 +234,7 @@ if [ "yes" = "$DOCHROOT" ]; then
 
 	chmod +x "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
-	CHROOT_VARS="env MAKECONF=\"$MAKECONF\" PKGLIST=\"$PKGLIST\" PKGSRC=\"$PKGSRC\""
-
-	"$CHROOT" "$SANDBOXDIR" $CHROOT_VARS "$CHROOTSCRIPT" || die $?
+	"$CHROOT" "$SANDBOXDIR" "$CHROOTSCRIPT" || die $?
 else
 	console "WARNING: Not using chroot"
 fi

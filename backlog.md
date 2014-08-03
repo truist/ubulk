@@ -152,6 +152,7 @@
 ## Later Backlog
 * Make a README.md
 * Documentation (man page?)
+* Make tests run in parallel
 * Have it figure out which packages have been deleted since last build and pipe their uninstall output to the user (so they can see anything that needs to be cleaned up)
 * Log all the INSTALL and UNINSTALL messages somewhere
 * Do an install in the sandbox and diff that against the prod install, and report to the user (as part of the build)
