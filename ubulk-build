@@ -146,6 +146,7 @@ fi
 
 #-------------------------------------------------------------------------
 ### BUILD AND MOUNT (AND UNMOUNT) THE SANDBOX ###
+MOUNTGREPSTR="on $SANDBOXDIR.\+ type null"
 trap_cleanup() {
 	console
 	console "---------------------"
@@ -153,11 +154,10 @@ trap_cleanup() {
 		console_err "Caught signal '$TRAP_NAME', cleaning up"
 	fi
 
-	GREPSTR="on $SANDBOXDIR.\+ type null"
-	if mount | grep "$GREPSTR" >/dev/null 2>&1 ; then
+	if mount | grep "$MOUNTGREPSTR" >/dev/null 2>&1 ; then
 		console "Unmounting sandbox ($SANDBOXDIR)"
 		"$SANDBOXDIR/sandbox" umount  # this doesn't emit an appropriate return code
-		if mount | grep "$GREPSTR" >/dev/null 2>&1 ; then
+		if mount | grep "$MOUNTGREPSTR" >/dev/null 2>&1 ; then
 			console_err "Problem unmounting sandbox - exiting"
 			exit 1
 		fi
@@ -165,15 +165,23 @@ trap_cleanup() {
 	console "Deleting sandbox ($SANDBOXDIR)"
 	rm -rf "$SANDBOXDIR"
 }
-if [ "yes" = "$DOSANDBOX" ]; then
+if [ "yes" = "$DOSANDBOX" -o "create" = "$DOSANDBOX" ]; then
 	console "Mounting sandbox ($SANDBOXDIR)"
 	if echo "$SANDBOXDIR" | grep "^[^/].*" >/dev/null 2>&1 ; then
 		console_err "SANDBOXDIR must be an absolute path ($SANDBOXDIR)"
 		exit 1
 	fi
+	if mount | grep "$MOUNTGREPSTR" >/dev/null 2>&1 ; then
+		console_err "$SANDBOXDIR is already mounted"
+		exit 1
+	fi
 	if command -v "$MKSANDBOX" >/dev/null 2>&1 ; then
-		# set up traps so we can clean up the sandbox no matter how we end
-		register_traps 'trap_cleanup'
+		if [ "create" = "$DOSANDBOX" ]; then
+			console "Sandbox will not be unmounted when the script ends"
+		else
+			# set up traps so we can clean up the sandbox no matter how we end
+			register_traps 'trap_cleanup'
+		fi
 		# make the sandbox
 		"$MKSANDBOX" $MKSANDBOXARGS "$SANDBOXDIR" || die $?
 	else
@@ -217,20 +225,18 @@ if [ "yes" = "$DOCHROOT" ]; then
 
 	# install a simpler die() and initialize the output
 	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
-		die() {
-			console_err "Error \$1 while \\"\$LASTCONSOLE\\""
-			exit \$1
-		}
 		console "Starting script in sandbox"
 	EOF
 
-	# prep for pbulk
-	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
-		mkdir -p /bulklog || die \$?
-		mkdir -p /scratch || die \$?
-		id -u pbulk >/dev/null 2>&1 || useradd pbulk || die \$?
-		chown pbulk /scratch || die \$?
-	EOF
+	if [ "yes" = "$DOSANDBOX" -o "create" = "$DOSANDBOX" ]; then
+		# prep for pbulk
+		cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+			mkdir -p /bulklog || die \$?
+			mkdir -p /scratch || die \$?
+			id -u pbulk >/dev/null 2>&1 || useradd pbulk || die \$?
+			chown pbulk /scratch || die \$?
+		EOF
+	fi
 
 	chmod +x "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 

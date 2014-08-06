@@ -35,7 +35,7 @@ chroot_logging() {
 		echo "This is chroot stderr" >&2
 		console "This is chroot console"
 		console_err "This is chroot console_err"
-EOF
+	EOF
 	
 	chroot "$@"
 }
@@ -57,7 +57,7 @@ chroot_ismade() {
 			FILE_VISIBLE=no
 		fi
 		console "In chroot; file visible: \$FILE_VISIBLE"
-EOF
+	EOF
 
 	chroot "$@"
 }
@@ -75,7 +75,7 @@ chroot_kill() {
 		console "We are in the chroot"
 		trap - SIGKILL
 		kill -SIGKILL \$\$
-EOF
+	EOF
 
 	chroot "$@"
 }
@@ -95,7 +95,7 @@ chroot_dirs() {
 		[ -n "\$(find /scratch -user pbulk -print -prune -o -prune)" ] && SCRATCH_OWNER=d
 
 		console "In chroot; results: \$BULKLOG_FOUND \$SCRATCH_FOUND \$PBULK_FOUND \$SCRATCH_OWNER"
-EOF
+	EOF
 
 	chroot "$@"
 }
@@ -173,7 +173,7 @@ chroot_env() {
 	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
 		echo "CHROOT SET:"
 		set
-EOF
+	EOF
 
 	chroot "$@"
 }
@@ -202,12 +202,51 @@ testExtraVarsArePassedIn() {
 	assertFalse "an unset var was not passed in" $?
 }
 
-testPathsAndUsersAreConfigurable() {
-	fail "impelement this"
+testPathsAndUsersAreConfigurableXXX() {
+	# scratch -> PBULK_WRKOBJDIR
+	# bulklog -> PBULK_BULKLOG
+	# pbulk user -> PBULK_UNPRIVILIGED_USER
+	startSkipping
+	fail "impelement this" # XXX
 }
 
 testObeysDoSandbox() {
-	fail "implement this"
+	# reuse chroot_dirs to build the chroot
+	CHROOT='chroot_dirs'
+	runScript -s create -c yes
+	checkResults 0 "script exited cleanly" \
+		"^In chroot; results: a b c d" "chroot has all the right dirs and users" \
+		"" "nothing on stderr"
+
+	# then mess it up and run it again with DOSANDBOX=no, to see that it
+	# isn't re-configured
+	rm -r "$SANDBOXDIR/bulklog"
+	assertTrue "we removed /bulklog" $?
+	rm -r "$SANDBOXDIR/scratch"
+	assertTrue "we removed /scratch" $?
+
+	CHROOT='chroot_dosandbox'
+	runScript -s no -c yes
+	checkResults 0 "script exited cleanly" \
+		"^In chroot; directories missing" "chroot dirs haven't been re-created" \
+		"" "nothing on stderr"
+
+	cat "$OUT" | grep "pbulk is still here: pbulk" >/dev/null 2>&1
+	assertTrue "pbulk user survives the intervening death of the chroot" $?
+}
+chroot_dosandbox() {
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+		if [ ! -d /bulklog -a ! -d /scratch ]; then
+			console "In chroot; directories missing"
+		else
+			console "In chroot: directories present"
+			console "ls /: \`ls -l /\`"
+		fi
+
+		console "pbulk is still here: \`id -n -u pbulk\`"
+	EOF
+
+	chroot "$@"
 }
 
 #-------------------------------------------------------------------------

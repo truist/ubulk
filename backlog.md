@@ -35,9 +35,6 @@
 * Option and command-arg to ignore/assume sandbox state
     - i.e. if you just want to leave the prior sandbox up
     - if set, warn if system /etc/mk.conf is newer than sandbox /etc/mk.conf
-
-## Build Backlog
-
 * Chroot and prep for pbulk
     - after sandbox setup
     - run a script once inside
@@ -49,6 +46,9 @@
     - use "ignore sandbox" option/arg to control whether setup stuff is done
     - summary to stdout / details to a log file
         - show log file path in output/email
+
+## Build Backlog
+
 * Install pbulk
     - during chroot setup phase
     - remove ok pkg_bulk dir if one is there

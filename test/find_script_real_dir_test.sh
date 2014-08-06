@@ -9,7 +9,7 @@ localSetUp() {
 	cat <<- EOF > "$SHUNIT_TMPDIR/$DEFAULTSCONF"
 		echo "$FOUNDIT"
 		exit 0
-EOF
+	EOF
 }
 
 #-------------------------------------------------------------------------

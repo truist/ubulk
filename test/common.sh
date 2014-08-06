@@ -5,6 +5,11 @@ SCRIPTNAME=ubulk-build
 DEFAULTSCONF=lib/defaults.conf
 UTILSH=lib/util.sh
 
+if [ -n "$1" ]; then
+	TESTNAME="$1"
+	shift
+fi
+
 #-------------------------------------------------------------------------
 # some test helpers (and auto-setup)
 
@@ -245,7 +250,7 @@ EOF
 		cd /$WORKDIR/$SCRIPT_PATH_PREFIX/
 		DELETE_SANDBOX=$DELETE_SANDBOX TESTNAME=$TESTNAME $0
 		exit \$?
-EOF
+	EOF
 	$DO_SUDO chmod +x "$CHROOT_DIR/$BOOTSTRAP"
 
 	echo "Switching into chroot"

@@ -5,7 +5,15 @@ cd `dirname $0` && . ./common.sh
 #-------------------------------------------------------------------------
 
 testDiesIfFails() {
-	fail "implement this"
+	SANDBOXDIR="`pwd`/sandbox"
+	MKSANDBOX="mkSandboxFail"
+	runScript -s yes
+	checkResults 23 "died with our failure code" \
+		"^Mounting sandbox ($SANDBOXDIR)" "sandbox creation was attempted" \
+		"^Error 23 while" "error is reported to user"
+}
+mkSandboxFail() {
+	return 23
 }
 
 testCreateSandbox() {
@@ -129,7 +137,7 @@ killerMkSandbox() {
 	return $RTRN
 }
 getSubshellPid() {
-	# XXX not POSIX, and a big hack, but it seem to be the best way
+	# not POSIX, and a big hack, but it seem to be the best way
 	# other than using bash explicitly
 	SUBSHELL_PID=$(sh -c 'ps -p $$ -o ppid=')
 }
@@ -172,6 +180,41 @@ testCheckMkConfDateIfNotDoingSandbox() {
 		"^Skipping sandbox" "sandbox step skipped" \
 		"WARNING: $MAKECONF is newer than $SANDBOXDIR/$MAKECONF" \
 			"script uses MAKECONF correctly"
+}
+
+testDoSandboxCreate() {
+	SANDBOXDIR="`pwd`/sandbox"
+	MKSANDBOX="mkSandboxCreateSandbox" # reuse it from above
+	runScript -s create
+	checkResults 0 "clean exit" \
+		"^Mounting sandbox ($SANDBOXDIR)" "sandbox creation is reported to user" \
+		"" "no errors"
+	cat "$OUT" | grep -v "^Deleting sandbox" >/dev/null 2>&1;
+	assertTrue "sandbox wasn't reported to be deleted" $?
+	assertTrue "sandbox is really there" "[ -d $SANDBOXDIR ]"
+	mount | grep "on $SANDBOXDIR" >/dev/null 2>&1
+	assertTrue "sandbox is still mounted" $?
+
+	"$SANDBOXDIR/sandbox" umount
+}
+
+testDoSandboxFailIfSandboxMounted() {
+	SANDBOXDIR="`pwd`/sandbox"
+	MKSANDBOX="mkSandboxCreateSandbox" # reuse it from above
+	runScript -s create
+	checkResults 0 "clean exit" \
+		"^Mounting sandbox ($SANDBOXDIR)" "sandbox creation is reported to user" \
+		"" "no errors"
+	mount | grep "on $SANDBOXDIR" >/dev/null 2>&1
+	assertTrue "sandbox is still mounted" $?
+
+	runScript -s create # 'yes' would have worked as well
+	checkResults 1 "error exit" \
+		"^Mounting sandbox" "it started to mount the sandbox" \
+		"^$SANDBOXDIR is already mounted" \
+			"it won't re-mount if it's already mounted"
+
+	"$SANDBOXDIR/sandbox" umount
 }
 
 #-------------------------------------------------------------------------

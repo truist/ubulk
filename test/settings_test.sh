@@ -358,7 +358,7 @@ chroot_env() {
 	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
 		echo "CHROOT SET:"
 		set
-EOF
+	EOF
 
 	chroot "$@"
 }

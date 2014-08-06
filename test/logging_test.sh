@@ -48,7 +48,7 @@ testOutputDestinationsAndLineOrdering() {
 		2: stderr goes to log
 		3: console goes to 'real' stdout and to log
 		4: console err goes to 'real' stderr and to log
-EOF
+	EOF
 	)"
 	checkLog "log got stdout, stderr, console, and console_err" "$E_LOG"
 
@@ -56,14 +56,14 @@ EOF
 		Logging to $LOG
 		3: console goes to 'real' stdout and to log
 		5: fd3 goes to 'real' stdout and not log
-EOF
+	EOF
 	)"
 	checkOut "stdout got console, fd3" "$E_OUT"
 
 	E_ERR="$(cat <<- EOF
 		4: console err goes to 'real' stderr and to log
 		6: fd4 goes to 'real' stderr and not log
-EOF
+	EOF
 	)"
 	checkErr "stderr got console_err, fd4" "$E_ERR"
 }
@@ -85,7 +85,7 @@ testDieWorksWithNoConsoleCall() {
 		 > 
 
 		See $LOG for details
-EOF
+	EOF
 	)"
 	checkErr "real stderr shows (somewhat broken) failure info, and log file" "$E_ERR"
 }
@@ -105,7 +105,7 @@ testDieAfterConsoleCall() {
 	E_OUT="$(cat <<- EOF
 		Logging to $LOG
 		$START
-EOF
+	EOF
 	)"
 	checkOut "stdout shows what we expect" "$E_OUT"
 
@@ -115,14 +115,14 @@ EOF
 		 > 
 
 		See $LOG for details
-EOF
+	EOF
 	)"
 	checkErr "stderr shows the error and the prior console message" "$E_ERR"
 
 	E_LOG="$(cat <<- EOF
 		$START
 		Error 23 while "$START"
-EOF
+	EOF
 	)"
 	checkLog "log shows the start and the error, but not the rest" "$E_LOG"
 }
@@ -161,7 +161,7 @@ testDieLoggingWithLittleLogging() {
 	E_OUT="$(cat <<- EOF
 		Logging to $LOG
 		$START
-EOF
+	EOF
 	)"
 	checkOut "stdout shows what we expect" "$E_OUT"
 
@@ -171,7 +171,7 @@ EOF
 		 > two
 
 		See $LOG for details
-EOF
+	EOF
 	)"
 	checkErr "stderr shows the error, the prior console message, and the following logs" "$E_ERR"
 
@@ -180,7 +180,7 @@ EOF
 		one
 		two
 		Error 23 while "$START"
-EOF
+	EOF
 	)"
 	checkLog "log shows the start, the logs, and the error, but not the rest" "$E_LOG"
 }
@@ -203,7 +203,7 @@ testDieLoggingWithLotsOfLogging() {
 	E_OUT="$(cat <<- EOF
 		Logging to $LOG
 		$START
-EOF
+	EOF
 	)"
 	checkOut "stdout shows what we expect" "$E_OUT"
 
@@ -211,7 +211,7 @@ EOF
 		Error 23 while "$START"
 
 		See $LOG for details
-EOF
+	EOF
 	)"
 	checkErr "stderr shows the error, the prior console message, and NO following logs" "$E_ERR"
 
@@ -220,7 +220,7 @@ EOF
 		one
 		two
 		Error 23 while "$START"
-EOF
+	EOF
 	)"
 	checkLog "log shows the start, the logs, and the error, but not the rest" "$E_LOG"
 }
