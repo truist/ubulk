@@ -51,7 +51,7 @@
 
 * Install pbulk
     - during chroot setup phase
-    - remove ok pkg_bulk dir if one is there
+    - remove earlier pkg_bulk dir if one is there
     - bootstrap pkg_bulk dir
     - configure pbulk mk.conf to use system-wide work and output dirs
     - clean, build and install pbulk into prepared dir
@@ -93,6 +93,8 @@
         - but still exit with the right code
     - figure out what junk is left behind and delete it
         - maybe wait until sandbox is unmounted?
+* Make all the paths / users / etc. configurable
+    - e.g. /scratch, pbulk
 * Option and command-arg to retry / continue / do a quick build
     - maybe this is the same as a 'skip the chroot' option?!?
     - auto-set all the 'skip' options
