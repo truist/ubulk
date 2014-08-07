@@ -225,18 +225,26 @@ if [ "yes" = "$DOCHROOT" ]; then
 
 	# install a simpler die() and initialize the output
 	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
-		console "Starting script in sandbox"
+		console "Starting script in chroot"
 	EOF
 
 	if [ "yes" = "$DOSANDBOX" -o "create" = "$DOSANDBOX" ]; then
 		# prep for pbulk
 		cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+			console "Creating work directories and users"
 			mkdir -p /bulklog || die \$?
 			mkdir -p /scratch || die \$?
 			id -u pbulk >/dev/null 2>&1 || useradd pbulk || die \$?
 			chown pbulk /scratch || die \$?
 		EOF
 	fi
+
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+		console "Bootstrapping pkgsrc for pbulk"
+		cd /usr/pkgsrc/bootstrap
+		./bootstrap --prefix=/usr/pkg_bulk --pkgdbdir=/usr/pkg_bulk/.pkgdb --workdir=/tmp/work\$\$
+		./cleanup
+	EOF
 
 	chmod +x "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
