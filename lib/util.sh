@@ -16,17 +16,17 @@ setup_console_and_logging() {
 LASTCONSOLE=""
 LASTPOS=0
 console() {
-	echo "$@" >&3
-	echo "$@"
-	LASTCONSOLE="$@"
+	echo "${@:-}" >&3
+	echo "${@:-}"
+	LASTCONSOLE="${@:-}"
 	if [ -n "$LOGPATH" ]; then
 		LASTPOS=$(($(ls -nl "$LOGPATH" | awk '{print $5}') + 1))
 	fi
 }
 
 console_err() {
-	echo "$@" >&4
-	echo "$@"
+	echo "${@:-}" >&4
+	echo "${@:-}"
 }
 
 : ${LOGLINESLIMIT:=10}

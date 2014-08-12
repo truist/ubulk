@@ -1,11 +1,11 @@
 #!/bin/sh
 
-set -e
+set -o nounset
+set -o errexit
 
 #-------------------------------------------------------------------------
 ### ARG HANDLING ###
 usage() {
-	EXITCODE=$1
 	cat << EOF >&2
 usage: ${0##*/} [<arg1> ...]
 
@@ -28,7 +28,7 @@ EOF
 # a trick to delay setting variables based on the command-line args, so they
 # can trump the defaults and the config file, later
 stashArg() {
-	ARG_STASH="$ARG_STASH $1=\"${OPTARG}\" ;"
+	ARG_STASH="${ARG_STASH:-} $1=\"${OPTARG}\" ;"
 }
 
 while getopts C:c:hi:k:p:s:v opt; do
@@ -88,7 +88,7 @@ LIB_DIR="$SCRIPT_DIR/lib"
 . "$LIB_DIR/defaults.conf"
 
 # process a command-line-specified CONFIG
-if [ -n "$ARG_CONFIG" ]; then
+if [ -n "${ARG_CONFIG:-}" ]; then
 	if [ $(check_for_relative_path $ARG_CONFIG) -eq 0 ]; then
 		ARG_CONFIG="$(pwd)/$ARG_CONFIG"
 	fi
@@ -105,7 +105,7 @@ if [ -f "$CONFIG" ]; then
 fi
 
 # override with the command-line args
-eval "$ARG_STASH"
+eval "${ARG_STASH:-}"
 
 # load the utility functions (now that we know where the log should go)
 . "$LIB_DIR/util.sh"
@@ -211,7 +211,7 @@ CHROOTSCRIPT="$CHROOTWORKDIR/$CHROOTSCRIPTNAME"
 echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
 if [ "yes" = "$DOCHROOT" ]; then
-	for CHROOT_VAR in PKGLIST PKGSRC $EXTRACHROOTVARS ; do
+	for CHROOT_VAR in PKGLIST PKGSRC ${EXTRACHROOTVARS:-} ; do
 		if [ ! -z "$(eval "echo \${${CHROOT_VAR}+x}")" ]; then
 			eval "CHROOT_VAR_VALUE=\"\${${CHROOT_VAR}}\"" || die $?
 			echo "Extra chroot var $CHROOT_VAR is set: '$CHROOT_VAR_VALUE'"
