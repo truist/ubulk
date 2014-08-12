@@ -139,23 +139,30 @@ neuterPaths() {
 	PATHROOT="$1"
 	# point path-based settings to a local dir
 	CONFIG="$PATHROOT/ubulk.conf"
-	PKGSRC="$PATHROOT/pkgsrc"
 	BUILDLOG="$PATHROOT/ubulk-build.log"
 	PKGLIST="$PATHROOT/pkglist"
-	SANDBOXDIR="$PATHROOT/sandbox"
 	EXTRACHROOTVARS="MAKECONF"
+	# these are "real" (inside the test sandbox) and so help make all the
+	# tests that don't do a chroot work
+	SANDBOXDIR="/." # functionally equivalent to "/"
+	PKGSRC="/usr/pkgsrc"
 
 	# turn every build step off
 	DOPKGSRC=no
 	DOPKGCHK=no
 	DOSANDBOX=no
 	DOCHROOT=no
+	INSTPBULK=no
 
 	# odds-and-ends
 	PKGCHK=pkg_chk
 	MKSANDBOX=mksandbox
 	MKSANDBOXARGS="--without-x --rwdirs=/var/spool"
 	CHROOT=chroot
+	BOOTSTRAP="./bootstrap"
+	CLEANUP="./cleanup"
+	CHROOTWORKDIR="/tmp/chrootworkdir-$$" # this has to be the same as prod
+	CHROOTSCRIPTNAME="inchroot.sh" # this has to be the same as prod
 }
 
 loadDefaultVarList() {

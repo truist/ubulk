@@ -197,6 +197,7 @@ testMkSandbox() {
 	checkDefaultsFile "MKSANDBOX" "mksandbox" "make_a_sandbox"
 
 	MKSANDBOX=make_a_sandbox
+	SANDBOXDIR="$PATHROOT/sandbox"
 	runScript -s yes
 	checkResults 1 "script dies when mksandbox is missing" \
 		"Logging to" "regular stuff on stdout" \
@@ -269,6 +270,8 @@ testDoSandbox() {
 testMkSandboxArgs() {
 	checkDefaultsFile "MKSANDBOXARGS" "--without-x --rwdirs=/var/spool" "--fakeargs"
 
+	SANDBOXDIR="$PATHROOT/sandbox"
+
 	TEST_ARGS="--totallyfake"
 	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
 	echo >> $DEFAULTSCONF && echo "MKSANDBOXARGS=$TEST_ARGS" >> $DEFAULTSCONF
@@ -317,6 +320,7 @@ testDoChroot() {
 testExtraChrootArgs() {
 	checkDefaultsFile "EXTRACHROOTVARS" "MAKECONF" "MAKE_A_CONF"
 
+	SANDBOXDIR="$PATHROOT/sandbox"
 	CHROOT='chroot_env'
 	unset EXTRACHROOTVARS
 
@@ -363,6 +367,61 @@ chroot_env() {
 	chroot "$@"
 }
 
+testInstPbulk() {
+	checkDefaultsFile "INSTPBULK" "yes" "no"
+
+	cp $DEFAULTSCONF ${DEFAULTSCONF}.save
+	echo >> $DEFAULTSCONF &&  echo "INSTPBULK=no" >> $DEFAULTSCONF
+	runScript
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pbulk setup" "script obeyed the hard-coded default" \
+		"" "nothing on stderr"
+	cp ${DEFAULTSCONF}.save $DEFAULTSCONF
+
+	echo "INSTPBULK=no" > ./testubulk.conf
+	runScript -C ./testubulk.conf
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pbulk setup" "setting trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	runScript -i no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pbulk setup" "command-arg trumps hard-coded default" \
+		"" "nothing on stderr"
+
+	echo "INSTPBULK=yes" > ./testubulk.conf
+	runScript -C ./testubulk.conf -i no
+	checkResults 0 "script exits cleanly" \
+		"^Skipping pbulk setup" "command-arg trumps config file" \
+		"" "nothing on stderr"
+}
+
+testBootstrap() {
+	checkDefaultsFile "BOOTSTRAP" "./bootstrap" "shoestrap"
+
+	SANDBOXDIR="`pwd`/sandbox"
+	BOOTSTRAP=shoestrap
+	runScript -s yes -i yes
+	checkResults 1 "script dies when bootstrap is missing" \
+		"Bootstrapping pkgsrc for pbulk" "we tried to bootstrap" \
+		"shoestrap: not found" "error is reported to user"
+
+	# this isn't really meant to be user-settable, so we don't test that it is
+}
+
+testChrootScript() {
+	checkDefaultsFile "CHROOTWORKDIR" "/tmp/chrootworkdir-$$" "something_else"
+	checkDefaultsFile "CHROOTSCRIPTNAME" "inchroot.sh" "footroot.sh"
+
+	SANDBOXDIR="/some_sandbox"
+	CHROOTWORKDIR="/tmp/onetimeonly.$$"
+	CHROOTSCRIPTNAME="thistime.sh"
+	runScript
+	assertTrue "custom CHROOTSCRIPT was created" \
+		"[ -f $SANDBOXDIR/$CHROOTWORKDIR/$CHROOTSCRIPTNAME ]"
+
+	# this isn't really meant to be user-settable, so we don't test that it is
+}
 
 	# source defaults.conf ourselves
 	# check for correct value

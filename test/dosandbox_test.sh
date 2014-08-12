@@ -2,6 +2,10 @@
 
 cd `dirname $0` && . ./common.sh
 
+localSetUp() {
+	SANDBOXDIR="$SHUNIT_TMPDIR/sandbox"
+}
+
 #-------------------------------------------------------------------------
 
 testDiesIfFails() {
@@ -189,8 +193,8 @@ testDoSandboxCreate() {
 	checkResults 0 "clean exit" \
 		"^Mounting sandbox ($SANDBOXDIR)" "sandbox creation is reported to user" \
 		"" "no errors"
-	cat "$OUT" | grep -v "^Deleting sandbox" >/dev/null 2>&1;
-	assertTrue "sandbox wasn't reported to be deleted" $?
+	cat "$OUT" | grep "^Deleting sandbox" >/dev/null 2>&1;
+	assertFalse "sandbox wasn't reported to be deleted" $?
 	assertTrue "sandbox is really there" "[ -d $SANDBOXDIR ]"
 	mount | grep "on $SANDBOXDIR" >/dev/null 2>&1
 	assertTrue "sandbox is still mounted" $?

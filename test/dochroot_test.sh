@@ -2,11 +2,15 @@
 
 cd `dirname $0` && . ./common.sh
 
+localSetUp() {
+	SANDBOXDIR="$PATHROOT/sandbox"
+}
+
 #-------------------------------------------------------------------------
 
 testScriptDiesIfChrootBreaks() {
 	CHROOT='chroot_die'
-	runScript -s yes -c yes
+	runScript -c yes
 	checkResults 23 "script exited with test code" \
 		"^Entering chroot ($SANDBOXDIR)" "we tried to enter the chroot" \
 		"^Error 23 while \"Entering chroot" "the error is reported on console_err"
@@ -80,70 +84,52 @@ chroot_kill() {
 	chroot "$@"
 }
 
-testDirsAndUsers() {
-	CHROOT='chroot_dirs'
-	runScript -s yes -c yes
-	checkResults 0 "script exited cleanly" \
-		"^In chroot; results: a b c d" "chroot has all the right dirs and users" \
+testSandboxFromPriorRun() {
+	CHROOT='chroot_first'
+	runScript -s create -c yes
+	checkResults 0 "script made it through first round" \
+		"^Creating test file" "script created test file" \
+		"" "nothing on stderr"
+
+	CHROOT='chroot_second'
+	runScript -s no -c yes
+	checkResults 0 "script made it through second round" \
+		"^Found test file" "test file is still there" \
 		"" "nothing on stderr"
 }
-chroot_dirs() {
+chroot_first() {
 	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
-		[ -d /bulklog ] && BULKLOG_FOUND=a
-		[ -d /scratch ] && SCRATCH_FOUND=b
-		id -u pbulk >/dev/null 2>&1 && PBULK_FOUND=c
-		[ -n "\$(find /scratch -user pbulk -print -prune -o -prune)" ] && SCRATCH_OWNER=d
+		console "Creating test file"
+		touch /testfile
+	EOF
 
-		console "In chroot; results: \$BULKLOG_FOUND \$SCRATCH_FOUND \$PBULK_FOUND \$SCRATCH_OWNER"
+	chroot "$@"
+}
+chroot_second() {
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+		if [ -f /testfile ]; then
+			console "Found test file"
+		fi
 	EOF
 
 	chroot "$@"
 }
 
-testSandboxFromPriorRun() {
-	CHROOT='chroot_prior_sandbox'
-	runScript -s yes -c yes
-	checkResults 0 "script made it through second round cleanly" \
-		"^Combined results: yes yes" "got through both rounds" \
-		"" "nothing on stderr"
-}
-chroot_prior_sandbox() {
-	# we're sneaky - we just call chroot_dirs twice; once to create the dirs
-	# and users for us, and again to test that it can handle that.
-	chroot_dirs "$@"
-	RTRN=$?
-	if cat $OUT | grep "a b c d" >/dev/null 2>&1 ; then
-		ALL_YES1=yes
-		echo > $OUT
-	else
-		cat $OUT
-		return $RTRN
-	fi
-
-	chroot_dirs "$@"
-	RTRN=$?
-	if cat $OUT | grep "a b c d" >/dev/null 2>&1 ; then
-		ALL_YES2=yes
-	else
-		cat $OUT
-		return $RTRN
-	fi
-
-	console "Combined results: $ALL_YES1 $ALL_YES2"
-
-	return $RTRN
-}
-
-INCLUDED_VARS=" PKGLIST
+INCLUDED_VARS="PKGLIST
 PKGSRC"
-EXCLUDED_VARS="BUILDLOG
+EXCLUDED_VARS="BOOTSTRAP
+BUILDLOG
 CHROOT
+CHROOTSCRIPTNAME
+CHROOTWORKDIR
 CONFIG
 DOCHROOT
 DOPKGCHK
 DOPKGSRC
 DOSANDBOX
 EXTRACHROOTVARS
+INSTPBULK
+DOPBULK
 MKSANDBOX
 MKSANDBOXARGS
 PKGCHK
@@ -210,43 +196,18 @@ testPathsAndUsersAreConfigurableXXX() {
 	fail "impelement this" # XXX
 }
 
-testObeysDoSandbox() {
-	# reuse chroot_dirs to build the chroot
-	CHROOT='chroot_dirs'
-	runScript -s create -c yes
-	checkResults 0 "script exited cleanly" \
-		"^In chroot; results: a b c d" "chroot has all the right dirs and users" \
+testChrootIsNotStrictlyNecessary() {
+	# remember, we're already in a chroot
+
+	SANDBOXDIR="/." # override our localSetUp
+	runScript # everything is off
+	checkResults 0 "script runs fine this way" \
+		"WARNING: Not using chroot" "the user was warned" \
 		"" "nothing on stderr"
 
-	# then mess it up and run it again with DOSANDBOX=no, to see that it
-	# isn't re-configured
-	rm -r "$SANDBOXDIR/bulklog"
-	assertTrue "we removed /bulklog" $?
-	rm -r "$SANDBOXDIR/scratch"
-	assertTrue "we removed /scratch" $?
-
-	CHROOT='chroot_dosandbox'
-	runScript -s no -c yes
-	checkResults 0 "script exited cleanly" \
-		"^In chroot; directories missing" "chroot dirs haven't been re-created" \
-		"" "nothing on stderr"
-
-	cat "$OUT" | grep "pbulk is still here: pbulk" >/dev/null 2>&1
-	assertTrue "pbulk user survives the intervening death of the chroot" $?
-}
-chroot_dosandbox() {
-	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
-		if [ ! -d /bulklog -a ! -d /scratch ]; then
-			console "In chroot; directories missing"
-		else
-			console "In chroot: directories present"
-			console "ls /: \`ls -l /\`"
-		fi
-
-		console "pbulk is still here: \`id -n -u pbulk\`"
-	EOF
-
-	chroot "$@"
+	# also check that extra vars weren't passed in
+	cat "$OUT" | grep "^Extra chroot var" >/dev/null 2>&1
+	assertFalse "chroot vars weren't passed in" $?
 }
 
 #-------------------------------------------------------------------------

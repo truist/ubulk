@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 #-------------------------------------------------------------------------
 ### ARG HANDLING ###
 usage() {
@@ -18,6 +20,7 @@ args (all optional, listed in execution order):
     -k (yes|no)            DOPKGCHK  Run pkg_chk -q
     -s (yes|no)            DOSANDBOX Create, mount, & unmount a sandbox dir
     -c (yes|no)            DOCHROOT  Chroot (you want this!)
+	-i (yes|no)            INSTPBULK Install pbulk (in the chroot)
 EOF
 	exit ${1:-1}
 }
@@ -28,11 +31,12 @@ stashArg() {
 	ARG_STASH="$ARG_STASH $1=\"${OPTARG}\" ;"
 }
 
-while getopts C:c:hk:p:s:v opt; do
+while getopts C:c:hi:k:p:s:v opt; do
     case $opt in
 		C)  ARG_CONFIG="${OPTARG}" ;; # this one needs special handling
 		c)  stashArg "DOCHROOT" ;;
 		h)  usage 0 ;;
+		i)  stashArg "INSTPBULK" ;;
 		k)  stashArg "DOPKGCHK" ;;
 		p)  stashArg "DOPKGSRC" ;;
 		s)  stashArg "DOSANDBOX" ;;
@@ -163,7 +167,7 @@ trap_cleanup() {
 		fi
 	fi
 	console "Deleting sandbox ($SANDBOXDIR)"
-	rm -rf "$SANDBOXDIR"
+	rm -rf "$SANDBOXDIR" || die $?
 }
 if [ "yes" = "$DOSANDBOX" -o "create" = "$DOSANDBOX" ]; then
 	console "Mounting sandbox ($SANDBOXDIR)"
@@ -180,7 +184,7 @@ if [ "yes" = "$DOSANDBOX" -o "create" = "$DOSANDBOX" ]; then
 			console "Sandbox will not be unmounted when the script ends"
 		else
 			# set up traps so we can clean up the sandbox no matter how we end
-			register_traps 'trap_cleanup'
+			register_traps 'trap_cleanup' || die $?
 		fi
 		# make the sandbox
 		"$MKSANDBOX" $MKSANDBOXARGS "$SANDBOXDIR" || die $?
@@ -197,60 +201,69 @@ else
 fi
 
 #-------------------------------------------------------------------------
-### ENTER AND CONFIG THE CHROOT ###
+### BUILD UP AN IN-CHROOT SCRIPT ###
+
+# give ourselves a workspace
+mkdir -p "$SANDBOXDIR/$CHROOTWORKDIR" || die $?
+
+# create a script to run in the chroot
+CHROOTSCRIPT="$CHROOTWORKDIR/$CHROOTSCRIPTNAME"
+echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
 if [ "yes" = "$DOCHROOT" ]; then
-	console "Entering chroot ($SANDBOXDIR)"
-
-	# give ourselves a workspace
-	CHROOTWORKDIR="/tmp/chrootworkdir-$$"
-	mkdir -p "$SANDBOXDIR/$CHROOTWORKDIR" || die $?
-
-	# create a script to run in the chroot
-	CHROOTSCRIPT="$CHROOTWORKDIR/inchroot.sh"
-	echo "#!/bin/sh" > "$SANDBOXDIR$CHROOTSCRIPT" || die $?
-
 	for CHROOT_VAR in PKGLIST PKGSRC $EXTRACHROOTVARS ; do
 		if [ ! -z "$(eval "echo \${${CHROOT_VAR}+x}")" ]; then
-			eval "CHROOT_VAR_VALUE=\"\${${CHROOT_VAR}}\""
+			eval "CHROOT_VAR_VALUE=\"\${${CHROOT_VAR}}\"" || die $?
 			echo "Extra chroot var $CHROOT_VAR is set: '$CHROOT_VAR_VALUE'"
-			echo "$CHROOT_VAR='$CHROOT_VAR_VALUE'" >> "$SANDBOXDIR$CHROOTSCRIPT"
+			echo "$CHROOT_VAR='$CHROOT_VAR_VALUE'" >> "$SANDBOXDIR$CHROOTSCRIPT" || $?
 		else
 			echo "Extra chroot var $CHROOT_VAR is unset, and won't be passed in" >&2
 		fi
 	done
+fi
 
-	# start with util.sh
-	cat "$LIB_DIR/util.sh" >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
+# start with util.sh
+cat "$LIB_DIR/util.sh" >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
-	# install a simpler die() and initialize the output
-	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
-		console "Starting script in chroot"
-	EOF
+# tell the user that we've begun
+cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
+	console "Starting chroot script"
+EOF
 
+if [ "yes" = "$INSTPBULK" ]; then
 	if [ "yes" = "$DOSANDBOX" -o "create" = "$DOSANDBOX" ]; then
 		# prep for pbulk
-		cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
+		cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 			console "Creating work directories and users"
 			mkdir -p /bulklog || die \$?
 			mkdir -p /scratch || die \$?
 			id -u pbulk >/dev/null 2>&1 || useradd pbulk || die \$?
 			chown pbulk /scratch || die \$?
+
+			console "Bootstrapping pkgsrc for pbulk"
+			cd /usr/pkgsrc/bootstrap || die \$?
+			$BOOTSTRAP --prefix=/usr/pkg_bulk --pkgdbdir=/usr/pkg_bulk/.pkgdb --workdir=/tmp/work\$\$ || die \$?
+			$CLEANUP # no die; we don't care if this fails
 		EOF
 	fi
-
-	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT"
-		console "Bootstrapping pkgsrc for pbulk"
-		cd /usr/pkgsrc/bootstrap
-		./bootstrap --prefix=/usr/pkg_bulk --pkgdbdir=/usr/pkg_bulk/.pkgdb --workdir=/tmp/work\$\$
-		./cleanup
+else
+	cat <<- EOF >> "$SANDBOXDIR$CHROOTSCRIPT" || die $?
+		console "Skipping pbulk setup"
 	EOF
+fi
 
-	chmod +x "$SANDBOXDIR$CHROOTSCRIPT" || die $?
+chmod +x "$SANDBOXDIR$CHROOTSCRIPT" || die $?
 
+
+#-------------------------------------------------------------------------
+### ENTER THE CHROOT ###
+
+if [ "yes" = "$DOCHROOT" ]; then
+	console "Entering chroot ($SANDBOXDIR)"
 	"$CHROOT" "$SANDBOXDIR" "$CHROOTSCRIPT" || die $?
 else
 	console "WARNING: Not using chroot"
+	cd "$SANDBOXDIR" && ".$CHROOTSCRIPT" || die $?
 fi
 
 #-------------------------------------------------------------------------
