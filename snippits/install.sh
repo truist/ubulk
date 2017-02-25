@@ -4,21 +4,21 @@
 
 generate_package_file_list()
 {
-	for p in `grep -v '^#' /etc/pkglist`; do 
+	for p in `grep -v '^#' /etc/pkglist`; do
 		cd /usr/pkgsrc/$p
 		PKGFILE=`/usr/bin/make show-var VARNAME=PKGNAME`
-		PKGFILEPATH=/usr/packages/All/$PKGFILE.tgz
-		if [ -f $PKGFILEPATH ]; then
+		PKGFILEPATH=$PKG_PATH/$PKGFILE.tgz
+		# if [ -f $PKGFILEPATH ]; then
 			echo $PKGFILEPATH
-		else
-			echo 2>&1 ERROR: $p / $PKGFILEPATH is missing
-			exit 1
-		fi
-	done 
+		# else
+		# 	echo 2>&1 ERROR: $p / $PKGFILEPATH is missing
+		# 	exit 1
+		# fi
+	done
 }
 
 echo Generating desired package file list...
-PKGFILES=`generate_package_file_list`;
+PKGFILES=`generate_package_file_list`
 
 echo Installing packages...
 for l in $PKGFILES; do
